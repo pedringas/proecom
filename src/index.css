@@ -1,0 +1,81 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", serif;
+  
+  --color-brand-gold: #D4AF37;
+  --color-brand-violet: #C4B5FD; /* Light Violet (violet-300) */
+  --color-brand-dark: #050505;
+  --color-brand-surface: #0F0F12;
+  --color-brand-border: rgba(196, 181, 253, 0.15);
+}
+
+@layer base {
+  body {
+    @apply bg-brand-dark text-white/90 font-sans antialiased selection:bg-brand-violet selection:text-black;
+  }
+  
+  :root {
+    --background: 5 5 5;
+    --foreground: 245 245 250;
+    --card: 15 15 18;
+    --card-foreground: 245 245 250;
+    --popover: 15 15 18;
+    --popover-foreground: 245 245 250;
+    --primary: 196 181 253;
+    --primary-foreground: 5 5 5;
+    --secondary: 25 25 30;
+    --secondary-foreground: 245 245 250;
+    --muted: 25 25 30;
+    --muted-foreground: 160 160 180;
+    --accent: 196 181 253 / 0.1;
+    --accent-foreground: 196 181 253;
+    --destructive: 239 68 68;
+    --destructive-foreground: 255 255 255;
+    --border: 196 181 253 / 0.15;
+    --input: 196 181 253 / 0.1;
+    --ring: 196 181 253;
+    --radius: 1rem;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-brand-surface/90 backdrop-blur-3xl border border-brand-violet/20 rounded-[2.5rem] shadow-[0_30px_60px_-15px_rgba(0,0,0,0.8)] transition-all duration-500;
+  }
+  
+  .glass-card:hover {
+    @apply border-brand-violet/40 shadow-[0_0_100px_-20px_rgba(196,181,253,0.1)];
+  }
+
+  .btn-premium {
+    @apply font-black uppercase tracking-[0.25em] transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:pointer-events-none;
+  }
+
+  .input-premium {
+    @apply bg-black/60 border-brand-violet/10 focus:border-brand-violet/50 focus:ring-brand-violet/20 transition-all rounded-2xl text-brand-violet;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(196, 181, 253, 0.1);
+    border-radius: 10px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(196, 181, 253, 0.2);
+  }
+}
+
+.pro-gradient {
+  @apply bg-gradient-to-br from-white/10 to-transparent;
+}
+
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
