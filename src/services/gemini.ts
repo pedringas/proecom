@@ -1,7 +1,5 @@
 import { GoogleGenAI, VideoGenerationReferenceImage, VideoGenerationReferenceType } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
-
 export interface TransformationResult {
   imageUrl: string;
 }
@@ -20,8 +18,10 @@ export async function transformImage(
     features?: string;
     lifestylePrompt?: string;
     productDescription?: string;
-  }
+  },
+  apiKey?: string
 ): Promise<string> {
+  const ai = new GoogleGenAI({ apiKey: apiKey || process.env.GEMINI_API_KEY || "" });
   let prompt = "";
   
   switch (style) {
@@ -39,7 +39,7 @@ export async function transformImage(
       prompt = `Usando como referencia exacta la imagen del producto adjunta, genera una fotografía de estilo de vida (lifestyle) mostrándolo en uso.
       Requisitos clave:
       1. Entorno: ${extraData?.lifestylePrompt ? `Sitúa la escena en este entorno específico: "${extraData.lifestylePrompt}".` : "Sitúa la escena en un ambiente moderno y realista. Iluminación natural cálida. El entorno debe variar en función del producto (ej: si es una pelota de fútbol, muestra a personas jugando al aire libre; si es un electrodoméstico, en una cocina moderna)."}
-      2. Personas: Incluye personas interactuando con el producto de forma natural y casual. La interacción debe verse genuina.
+      2. Personas: Incluye personas interactando con el producto de forma natural y casual. La interacción debe verse genuina.
       3. Composición: Fotografía profesional con profundidad de campo. El producto es el héroe.
       4. Formato: La imagen final debe ser cuadrada (aspect ratio 1:1).`;
       break;
@@ -102,7 +102,8 @@ export async function transformImage(
   throw new Error("No se pudo generar la imagen profesional.");
 }
 
-export async function analyzeProduct(images: { base64: string, mimeType: string }[], userDescription?: string): Promise<string> {
+export async function analyzeProduct(images: { base64: string, mimeType: string }[], userDescription?: string, apiKey?: string): Promise<string> {
+  const ai = new GoogleGenAI({ apiKey: apiKey || process.env.GEMINI_API_KEY || "" });
   const parts = images.map(img => ({
     inlineData: {
       data: img.base64,
@@ -124,10 +125,11 @@ export async function analyzeProduct(images: { base64: string, mimeType: string 
 }
 
 export async function generateVideo360(
-  aiInstance: any,
+  apiKey: string,
   description: string,
   images: { base64: string, mimeType: string }[]
 ): Promise<string> {
+  const aiInstance = new GoogleGenAI({ apiKey: apiKey || process.env.API_KEY || "" });
   // Use up to 3 reference images for better fidelity as per Veo 3.1 capabilities
   const referenceImagesPayload: VideoGenerationReferenceImage[] = images.slice(0, 3).map(img => ({
     image: {
@@ -155,7 +157,7 @@ export async function generateVideo360(
       numberOfVideos: 1,
       referenceImages: referenceImagesPayload,
       resolution: '720p',
-      aspectRatio: '9:16' // Vertical format for Reels
+      aspectRatio: '16:9' // Must be 16:9 for multiple reference images
     }
   });
 
@@ -165,7 +167,10 @@ export async function generateVideo360(
   }
 
   const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-  if (!downloadLink) throw new Error("No se pudo obtener el enlace de descarga del video.");
+  if (!downloadLink) {
+    console.error("Video generation failed. Operation details:", JSON.stringify(operation, null, 2));
+    throw new Error("No se pudo obtener el enlace de descarga del video.");
+  }
   
   return downloadLink;
 }

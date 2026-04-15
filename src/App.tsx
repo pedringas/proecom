@@ -156,6 +156,8 @@ export default function App() {
   
   const [isGoogleAuth, setIsGoogleAuth] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [userApiKey, setUserApiKey] = useState(() => localStorage.getItem('gemini_api_key') || "");
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const batchInputRef = useRef<HTMLInputElement>(null);
@@ -181,6 +183,8 @@ export default function App() {
         // @ts-ignore
         const selected = await window.aistudio.hasSelectedApiKey();
         setHasApiKey(selected);
+      } else {
+        setHasApiKey(!!localStorage.getItem('gemini_api_key'));
       }
     };
     checkApiKey();
@@ -362,14 +366,7 @@ export default function App() {
     if (video360InputRef.current) video360InputRef.current.value = "";
   };
 
-  const handleGenerateVideo360 = async () => {
-    const angles = Object.values(video360Angles).filter(Boolean) as BatchItem[];
-    if (angles.length === 0) {
-      toast.error("Por favor, sube al menos una imagen.");
-      return;
-    }
-    
-    // Check API Key
+  const ensureApiKey = async (): Promise<boolean> => {
     // @ts-ignore
     if (window.aistudio?.hasSelectedApiKey) {
       // @ts-ignore
@@ -378,9 +375,26 @@ export default function App() {
         // @ts-ignore
         await window.aistudio.openSelectKey();
         setHasApiKey(true);
-        return;
+        return false;
       }
+      return true;
+    } else {
+      if (!userApiKey) {
+        setShowApiKeyModal(true);
+        return false;
+      }
+      return true;
     }
+  };
+
+  const handleGenerateVideo360 = async () => {
+    const angles = Object.values(video360Angles).filter(Boolean) as BatchItem[];
+    if (angles.length === 0) {
+      toast.error("Por favor, sube al menos una imagen.");
+      return;
+    }
+    
+    if (!(await ensureApiKey())) return;
 
     setIsProcessing(true);
     setBatchProgress(0);
@@ -407,7 +421,7 @@ export default function App() {
         // Transformar imagen de celular en profesional (Prompt 1)
         const resUrl = await transformImage(base64, "image/jpeg", "Ecom", "", {
           productDescription: productDescription
-        });
+        }, userApiKey);
         
         // Convertir el resultado (data URL) de vuelta a base64 para Veo
         const processedBase64 = resUrl.split(",")[1];
@@ -420,16 +434,14 @@ export default function App() {
       // PASO 2: Generación de Video 360º (Módulo Multi-Image-to-Video)
       
       // 2.1 Analizar producto para descripción técnica detallada
-      const description = await analyzeProduct(processedImages, productDescription);
+      const description = await analyzeProduct(processedImages, productDescription, userApiKey);
       console.log("Product Description for Veo:", description);
       currentStep++;
       setBatchProgress((currentStep / totalSteps) * 100);
 
       // 2.2 Generar Video con Veo (Prompt 2)
-      const userAi = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
-      
       const videoUri = await generateVideo360(
-        userAi,
+        userApiKey,
         description,
         processedImages
       );
@@ -462,18 +474,7 @@ export default function App() {
   const handleTransform = async () => {
     if (!image) return;
     
-    // Check API Key
-    // @ts-ignore
-    if (window.aistudio?.hasSelectedApiKey) {
-      // @ts-ignore
-      const selected = await window.aistudio.hasSelectedApiKey();
-      if (!selected) {
-        // @ts-ignore
-        await window.aistudio.openSelectKey();
-        setHasApiKey(true);
-        return;
-      }
-    }
+    if (!(await ensureApiKey())) return;
 
     setIsProcessing(true);
     const base64Data = image.split(",")[1];
@@ -487,7 +488,7 @@ export default function App() {
         features: infoFeatures,
         lifestylePrompt: lifestylePrompt,
         productDescription: productDescription
-      });
+      }, userApiKey);
       setResult(transformedUrl);
       
       // Add to history
@@ -537,18 +538,7 @@ export default function App() {
   const runBatch = async () => {
     if (batchItems.length === 0 || !isFormValid()) return;
 
-    // Check API Key
-    // @ts-ignore
-    if (window.aistudio?.hasSelectedApiKey) {
-      // @ts-ignore
-      const selected = await window.aistudio.hasSelectedApiKey();
-      if (!selected) {
-        // @ts-ignore
-        await window.aistudio.openSelectKey();
-        setHasApiKey(true);
-        return;
-      }
-    }
+    if (!(await ensureApiKey())) return;
 
     setIsProcessing(true);
     let completed = 0;
@@ -574,7 +564,7 @@ export default function App() {
           features: item.infoFeatures || infoFeatures,
           lifestylePrompt: item.lifestylePrompt || lifestylePrompt,
           productDescription: item.productDescription || productDescription
-        });
+        }, userApiKey);
         
         setBatchItems(prev => prev.map((item, idx) => 
           idx === i ? { ...item, status: "completed", result: transformedUrl } : item
@@ -1580,9 +1570,7 @@ export default function App() {
                             size="sm" 
                             className="w-full h-8 text-[10px] border-brand-violet/30 text-brand-violet hover:bg-brand-violet/10"
                             onClick={async () => {
-                              // @ts-ignore
-                              await window.aistudio.openSelectKey();
-                              setHasApiKey(true);
+                              await ensureApiKey();
                             }}
                           >
                             Configurar API Key
@@ -1859,6 +1847,69 @@ export default function App() {
                       }}
                     >
                       Descargar HD
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+        {/* API Key Modal */}
+        <AnimatePresence>
+          {showApiKeyModal && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl"
+            >
+              <motion.div 
+                initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                animate={{ scale: 1, opacity: 1, y: 0 }}
+                exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                className="relative max-w-md w-full bg-zinc-900 rounded-3xl overflow-hidden border border-white/10 shadow-2xl p-8 space-y-6"
+              >
+                <div className="space-y-2 text-center">
+                  <h2 className="text-xl font-bold text-white">Configurar API Key</h2>
+                  <p className="text-xs text-white/50">
+                    Para usar esta aplicación fuera de AI Studio, necesitas tu propia clave de API de Gemini (Google AI Studio).
+                  </p>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-white/70">API Key de Gemini</Label>
+                    <Input 
+                      type="password"
+                      placeholder="AIzaSy..."
+                      value={userApiKey}
+                      onChange={(e) => setUserApiKey(e.target.value)}
+                      className="bg-black/50 border-white/10 text-white"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-3 pt-4">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 border-white/10 text-white hover:bg-white/5"
+                      onClick={() => setShowApiKeyModal(false)}
+                    >
+                      Cancelar
+                    </Button>
+                    <Button 
+                      className="flex-1 bg-brand-violet text-black hover:bg-white"
+                      onClick={() => {
+                        if (userApiKey.trim()) {
+                          localStorage.setItem('gemini_api_key', userApiKey.trim());
+                          setHasApiKey(true);
+                          setShowApiKeyModal(false);
+                          toast.success("API Key guardada correctamente");
+                        } else {
+                          toast.error("Por favor ingresa una clave válida");
+                        }
+                      }}
+                    >
+                      Guardar
                     </Button>
                   </div>
                 </div>
