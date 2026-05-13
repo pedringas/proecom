@@ -94,6 +94,7 @@ interface HistoryItem {
   style: Style;
   timestamp: number;
   fileName: string;
+  aspectRatio?: "1:1" | "16:9" | "9:16";
 }
 
 interface BatchItem {
@@ -109,6 +110,7 @@ interface BatchItem {
   infoFeatures?: string;
   lifestylePrompt?: string;
   productDescription?: string;
+  aspectRatio?: "1:1" | "16:9" | "9:16";
 }
 
 export default function App() {
@@ -120,6 +122,7 @@ export default function App() {
   const [isSavingToDrive, setIsSavingToDrive] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [selectedStyle, setSelectedStyle] = useState<Style>("Ecom");
+  const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "16:9" | "9:16">("1:1");
   
   // Extra data for technical and infographic
   const [width, setWidth] = useState("");
@@ -487,7 +490,8 @@ export default function App() {
         title: infoTitle,
         features: infoFeatures,
         lifestylePrompt: lifestylePrompt,
-        productDescription: productDescription
+        productDescription: productDescription,
+        aspectRatio: imageAspectRatio
       }, userApiKey);
       setResult(transformedUrl);
       
@@ -498,7 +502,8 @@ export default function App() {
         result: transformedUrl,
         style: selectedStyle,
         timestamp: Date.now(),
-        fileName: originalFileName
+        fileName: originalFileName,
+        aspectRatio: imageAspectRatio
       };
       setHistory(prev => [newItem, ...prev]);
       toast.success("¡Transformación completada!");
@@ -563,7 +568,8 @@ export default function App() {
           title: item.infoTitle || infoTitle,
           features: item.infoFeatures || infoFeatures,
           lifestylePrompt: item.lifestylePrompt || lifestylePrompt,
-          productDescription: item.productDescription || productDescription
+          productDescription: item.productDescription || productDescription,
+          aspectRatio: item.aspectRatio || imageAspectRatio
         }, userApiKey);
         
         setBatchItems(prev => prev.map((item, idx) => 
@@ -577,7 +583,8 @@ export default function App() {
           result: transformedUrl,
           style: selectedStyle,
           timestamp: Date.now(),
-          fileName: file.name
+          fileName: file.name,
+          aspectRatio: item.aspectRatio || imageAspectRatio
         };
         setHistory(prev => [historyItem, ...prev]);
         
@@ -1017,6 +1024,32 @@ export default function App() {
                   ))}
                 </div>
               </div>
+
+              {selectedStyle !== "Video360" && (
+                <div className="space-y-4 mb-8 shrink-0">
+                  <label className="text-[10px] font-black text-brand-violet uppercase tracking-[0.3em] mb-2 block">Relación de Aspecto</label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { id: '1:1', label: '1:1 (Cuadrado)' },
+                      { id: '9:16', label: '9:16 (Vertical)' },
+                      { id: '16:9', label: '16:9 (Horizontal)' }
+                    ].map((ratio) => (
+                      <Button
+                        key={ratio.id}
+                        onClick={() => setImageAspectRatio(ratio.id as "1:1" | "9:16" | "16:9")}
+                        className={cn(
+                          "h-11 text-[10px] font-black uppercase tracking-widest transition-all duration-300 border active:scale-95",
+                          imageAspectRatio === ratio.id 
+                            ? "bg-white text-black shadow-[0_0_25px_rgba(255,255,255,0.3)] border-white" 
+                            : "bg-transparent text-white/60 border-brand-violet/20 hover:bg-brand-violet/10"
+                        )}
+                      >
+                        {ratio.label}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="flex-1 space-y-10 overflow-y-auto pr-2 custom-scrollbar">
 

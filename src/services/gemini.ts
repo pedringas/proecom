@@ -18,6 +18,7 @@ export async function transformImage(
     features?: string;
     lifestylePrompt?: string;
     productDescription?: string;
+    aspectRatio?: "1:1" | "16:9" | "9:16";
   },
   apiKey?: string
 ): Promise<string> {
@@ -31,8 +32,7 @@ export async function transformImage(
       Requisitos clave:
       1. Fidelidad: Mantén un 100% de fidelidad con la forma, colores, materiales y detalles del producto original que se ve en la foto adjunta. Usa la descripción "${extraData?.productDescription}" para asegurar que identificas correctamente el objeto.
       2. Entorno: El producto debe estar centrado sobre un fondo blanco puro (RGB 255,255,255) infinito.
-      3. Iluminación: Usa iluminación de estudio fotográfico suave para crear volumen y sombras de contacto realistas en la base. Elimina reflejos feos o ruido.
-      4. Formato: La imagen final debe ser cuadrada (aspect ratio 1:1).`;
+      3. Iluminación: Usa iluminación de estudio fotográfico suave para crear volumen y sombras de contacto realistas en la base. Elimina reflejos feos o ruido.`;
       break;
       
     case "Lifestyle":
@@ -40,8 +40,7 @@ export async function transformImage(
       Requisitos clave:
       1. Entorno: ${extraData?.lifestylePrompt ? `Sitúa la escena en este entorno específico: "${extraData.lifestylePrompt}".` : "Sitúa la escena en un ambiente moderno y realista. Iluminación natural cálida. El entorno debe variar en función del producto (ej: si es una pelota de fútbol, muestra a personas jugando al aire libre; si es un electrodoméstico, en una cocina moderna)."}
       2. Personas: Incluye personas interactando con el producto de forma natural y casual. La interacción debe verse genuina.
-      3. Composición: Fotografía profesional con profundidad de campo. El producto es el héroe.
-      4. Formato: La imagen final debe ser cuadrada (aspect ratio 1:1).`;
+      3. Composición: Fotografía profesional con profundidad de campo. El producto es el héroe.`;
       break;
       
     case "Technical":
@@ -59,7 +58,7 @@ export async function transformImage(
       - Revisa cada letra antes de renderizar. Está terminantemente prohibido escribir "MEDIDES", "Anich", "Ancih", "Profuno" o "Profund".
       - Las únicas palabras permitidas son: "MEDIDAS", "Ancho", "Alto", "Profundo", "cm".
       
-      Estética: Limpia, profesional, estilo catálogo industrial minimalista. Formato 1:1.`;
+      Estética: Limpia, profesional, estilo catálogo industrial minimalista.`;
       break;
       
     case "Infographic":
@@ -68,13 +67,15 @@ export async function transformImage(
       1. Estilo: Colores fuertes, saturados y llamativos que atraigan la vista (colores gancho), complementando al producto.
       2. Título: En la parte superior central, RENDERIZA EL TEXTO EXACTO USANDO LA TIPOGRAFÍA "INTER" (SANS-SERIF): "${extraData?.title || "Título del Producto"}".
       3. Características: Alrededor del producto, usa íconos modernos o viñetas dinámicas para destacar estos puntos clave (RENDERIZA CADA PALABRA EXACTAMENTE COMO SE PROPORCIONA USANDO LA TIPOGRAFÍA "INTER"): "${extraData?.features || "Características principales"}".
-      4. Legibilidad: Asegura que todo el texto sea perfectamente legible y respete fielmente la ortografía del usuario.
-      5. Formato: La imagen final debe ser cuadrada (aspect ratio 1:1).`;
+      4. Legibilidad: Asegura que todo el texto sea perfectamente legible y respete fielmente la ortografía del usuario.`;
       break;
       
     default:
       prompt = `Transforma esta imagen en una foto de producto profesional de alta calidad.`;
   }
+
+  // Explicitly tell the model the target aspect ratio
+  prompt += `\n\nASPECT RATIO REQUIREMENT: The final image MUST strictly follow the ${extraData?.aspectRatio || "1:1"} aspect ratio format.`;
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-image",
@@ -90,6 +91,12 @@ export async function transformImage(
           text: prompt,
         },
       ],
+    },
+    config: {
+      // NOTE: For gemini-2.5-flash-image via generateContent, some configs might be ignored 
+      // but we send it via both config and prompt depending on the exact SDK wrapper support.
+      // We will try standard aspectRatio config:
+      aspectRatio: extraData?.aspectRatio || "1:1"
     }
   });
 
