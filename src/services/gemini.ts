@@ -158,7 +158,7 @@ LAYOUT: Balanced composition. Product centered. Features distributed evenly arou
   prompt += `\n\nFINAL REQUIREMENT — ASPECT RATIO: The output image MUST be in ${extraData?.aspectRatio || "1:1"} aspect ratio. Compose all elements accordingly.`;
 
   const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-preview",
+    model: "gemini-2.0-flash-preview-image-generation",
     contents: {
       parts: [
         {
@@ -203,7 +203,7 @@ export async function analyzeProduct(
 
   const response = await ai.models.generateContent({
     // BUGFIX: modelo corregido (era "gemini-3-flash-preview" — no existe)
-    model: "gemini-2.5-flash-preview",
+    model: "gemini-2.0-flash-preview-image-generation",
     contents: {
       parts: [
         ...parts,
