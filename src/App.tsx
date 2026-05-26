@@ -46,6 +46,7 @@ interface BatchItem {
   lifestylePrompt?: string;
   productDescription?: string;
   aspectRatio?: "1:1" | "16:9" | "9:16";
+  infoStyle?: "Pop" | "Elegante";
 }
 
 // ─── Style definitions ────────────────────────────────────────────────────────
@@ -183,6 +184,7 @@ export default function App() {
   const [depth, setDepth]               = useState("");
   const [infoTitle, setInfoTitle]       = useState("");
   const [infoFeatures, setInfoFeatures] = useState("");
+  const [infoStyle, setInfoStyle]       = useState<"Pop" | "Elegante">("Pop");
   const [lifestylePrompt, setLifestylePrompt]       = useState("");
   const [productDescription, setProductDescription] = useState("");
 
@@ -411,7 +413,8 @@ export default function App() {
       const url = await transformImage(image.split(",")[1], mimeType, selectedStyle, "", {
         width, height, depth,
         title: infoTitle, features: infoFeatures,
-        lifestylePrompt, productDescription, aspectRatio: imageAspectRatio
+        lifestylePrompt, productDescription, aspectRatio: imageAspectRatio,
+        infoStyle
       }, userApiKey);
       setResult(url);
       addToHistory(image, url, selectedStyle, originalFileName);
@@ -450,7 +453,8 @@ export default function App() {
           title: item.infoTitle || infoTitle, features: item.infoFeatures || infoFeatures,
           lifestylePrompt: item.lifestylePrompt || lifestylePrompt,
           productDescription: item.productDescription || productDescription,
-          aspectRatio: item.aspectRatio || imageAspectRatio
+          aspectRatio: item.aspectRatio || imageAspectRatio,
+          infoStyle: item.infoStyle || infoStyle
         }, userApiKey));
         setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "completed", result: url } : it));
         addToHistory(`data:image/jpeg;base64,${b64}`, url, selectedStyle, item.file.name);
@@ -575,6 +579,21 @@ export default function App() {
       )}
       {selectedStyle === "Infographic" && (
         <motion.div key="infographic" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pb-4">
+          <div className="space-y-2">
+            <Label className="text-[10px] uppercase text-brand-violet/60">Estilo Visual</Label>
+            <div className="grid grid-cols-2 gap-2">
+              {(["Pop", "Elegante"] as const).map(s => (
+                <Button key={s} onClick={() => setInfoStyle(s)}
+                  className={cn("h-9 text-[10px] font-black uppercase tracking-widest border active:scale-95",
+                    infoStyle === s ? "bg-white text-black border-white" : "bg-transparent text-white/60 border-brand-violet/20 hover:bg-brand-violet/10")}>
+                  {s === "Pop" ? "Pop 🎨" : "Elegante ✨"}
+                </Button>
+              ))}
+            </div>
+            <p className="text-[9px] text-white/30 uppercase tracking-tighter">
+              {infoStyle === "Pop" ? "Colores vibrantes y llamativos" : "Paleta sofisticada derivada del producto"}
+            </p>
+          </div>
           <div className="space-y-2">
             <Label className="text-[10px] uppercase text-brand-violet/60">Título <span className="text-red-500">*</span></Label>
             <Input placeholder="Ej: El mejor del mercado" value={infoTitle} onChange={e => setInfoTitle(e.target.value)}

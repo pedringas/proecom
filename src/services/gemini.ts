@@ -19,6 +19,7 @@ export async function transformImage(
     lifestylePrompt?: string;
     productDescription?: string;
     aspectRatio?: "1:1" | "16:9" | "9:16";
+    infoStyle?: "Pop" | "Elegante";
   },
   apiKey?: string
 ): Promise<string> {
@@ -107,8 +108,8 @@ CRITICAL TEXT RULES:
     case "Infographic": {
       const title = extraData?.title || "";
       const features = extraData?.features || "";
+      const style = extraData?.infoStyle || "Pop";
 
-      // Convertir features en lista numerada para mayor precisión
       const featureLines = features
         .split("\n")
         .map(f => f.trim())
@@ -118,35 +119,63 @@ CRITICAL TEXT RULES:
         .map((f, i) => `Feature ${i + 1}: "${f}"`)
         .join("\n");
 
-      prompt = `You are a professional e-commerce graphic designer creating a vibrant marketing infographic for a product listing.
+      if (style === "Pop") {
+        prompt = `You are a professional e-commerce graphic designer creating a VIBRANT POP-STYLE marketing infographic for a product listing.
 
 STEP 1 — PRODUCT:
 Use the product from the attached image as the central hero element. Maintain 100% visual fidelity.
 
-STEP 2 — DESIGN:
-Create a bold, colorful, eye-catching infographic layout. Use strong saturated colors that complement the product. Professional, modern design inspired by top e-commerce listings.
+STEP 2 — DESIGN (POP STYLE):
+Create a bold, energetic, eye-catching infographic layout. Extract the dominant colors directly from the product itself and use their vibrant, highly-saturated versions as the palette. Add complementary accent colors for maximum visual impact. Think bold gradients, dynamic shapes, strong contrasts. Inspired by top e-commerce listings on MercadoLibre and Amazon.
 
 STEP 3 — TITLE TEXT:
 At the top center of the image, render this exact title text using a bold sans-serif font (Inter or Montserrat):
 
 TITLE TO RENDER: "${title}"
 
-Copy every character exactly. Do not add, remove or change any letter. Do not translate or interpret it.
+Copy every character exactly. Do not add, remove or change any letter.
 
 STEP 4 — FEATURE BADGES:
-Around the product, place ${featureLines.length} feature badge${featureLines.length !== 1 ? "s" : ""}. Each badge has a colored background pill/chip with an icon and text. Render each feature text EXACTLY as specified below, character by character:
+Around the product, place ${featureLines.length} feature badge${featureLines.length !== 1 ? "s" : ""}. Each badge has a colored background pill/chip with an icon and text. Render each feature text EXACTLY as specified below:
 
 ${featureList}
 
 CRITICAL TEXT ACCURACY RULES (NON-NEGOTIABLE):
-- Before rendering ANY text, mentally spell it out letter by letter.
 - Copy EXACTLY what is given. Do not paraphrase, translate, summarize or "improve" any word.
 - Do not invent words. Do not add decorative text that was not requested.
 - Numbers must be copied exactly as provided.
 - Accents and special characters (á, é, í, ó, ú, ñ, ü) must be preserved exactly.
-- After rendering, verify each word matches the original input.
 
-LAYOUT: Balanced composition. Product centered. Features distributed evenly around it. Title prominent at top. Use icons relevant to each feature to add visual appeal.`;
+LAYOUT: Balanced composition. Product centered. Features distributed evenly around it. Title prominent at top. Use icons relevant to each feature.`;
+      } else {
+        prompt = `You are a luxury brand graphic designer creating an ELEGANT, SOPHISTICATED marketing infographic for a premium product listing.
+
+STEP 1 — PRODUCT:
+Use the product from the attached image as the central hero element. Maintain 100% visual fidelity.
+
+STEP 2 — DESIGN (ELEGANT STYLE):
+Create a refined, sophisticated infographic layout. Derive the color palette exclusively from the product's own tones — use muted, desaturated versions of those colors (e.g. if the product is red, use burgundy/rose; if blue, use navy/slate). Combine with neutral whites, warm creams or deep charcoals. Typography must be clean and minimal. Thin elegant lines, generous whitespace, subtle textures. Inspired by luxury brands like Apple, Dyson, or high-end fashion e-commerce.
+
+STEP 3 — TITLE TEXT:
+At the top center of the image, render this exact title text using a light-weight or medium serif/sans-serif font (Playfair Display or similar):
+
+TITLE TO RENDER: "${title}"
+
+Copy every character exactly. Do not add, remove or change any letter.
+
+STEP 4 — FEATURE BADGES:
+Around the product, place ${featureLines.length} feature badge${featureLines.length !== 1 ? "s" : ""}. Each badge uses a minimal pill or underline style with subtle color derived from the product palette. Render each feature text EXACTLY as specified below:
+
+${featureList}
+
+CRITICAL TEXT ACCURACY RULES (NON-NEGOTIABLE):
+- Copy EXACTLY what is given. Do not paraphrase, translate, summarize or "improve" any word.
+- Do not invent words. Do not add decorative text that was not requested.
+- Numbers must be copied exactly as provided.
+- Accents and special characters (á, é, í, ó, ú, ñ, ü) must be preserved exactly.
+
+LAYOUT: Balanced, airy composition. Product centered with generous negative space. Features arranged with elegance. Title subtle but legible at the top.`;
+      }
       break;
     }
 
@@ -155,7 +184,13 @@ LAYOUT: Balanced composition. Product centered. Features distributed evenly arou
   }
 
   // Aspect ratio instruction
-  prompt += `\n\nFINAL REQUIREMENT — ASPECT RATIO: The output image MUST be in ${extraData?.aspectRatio || "1:1"} aspect ratio. Compose all elements accordingly.`;
+  const ar = extraData?.aspectRatio || "1:1";
+  const arDesc: Record<string, string> = {
+    "1:1":  "1:1 (square — equal width and height, like an Instagram post)",
+    "16:9": "16:9 (landscape — wide horizontal format, like a YouTube thumbnail)",
+    "9:16": "9:16 (portrait — tall vertical format, like an Instagram Story or TikTok)",
+  };
+  prompt += `\n\nMANDATORY FINAL REQUIREMENT — OUTPUT ASPECT RATIO: You MUST generate the image in ${arDesc[ar] || ar} aspect ratio. This is non-negotiable. Every element — product, background, badges, title — must be composed and cropped to fit exactly within this ratio. Do NOT output a square image if a different ratio is requested.`;
 
   const response = await ai.models.generateContent({
     model: "gemini-2.5-flash-image",
