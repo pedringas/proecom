@@ -208,6 +208,7 @@ MOOD: Aspirational, sophisticated, real. The photo must feel like it was shot by
       ],
     },
     config: {
+      responseModalities: ["IMAGE"],
       aspectRatio: extraData?.aspectRatio || "1:1",
     },
   });

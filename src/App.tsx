@@ -439,13 +439,12 @@ export default function App() {
     if (!image || !(await ensureApiKey())) return;
     setIsProcessing(true);
     try {
-      const raw = await transformImage(image.split(",")[1], mimeType, selectedStyle, "", {
+      const url = await transformImage(image.split(",")[1], mimeType, selectedStyle, "", {
         width, height, depth,
         title: infoTitle, features: infoFeatures,
         lifestylePrompt, productDescription, aspectRatio: imageAspectRatio,
         infoStyle
       }, userApiKey);
-      const url = await cropToAspectRatio(raw, imageAspectRatio);
       setResult(url);
       addToHistory(image, url, selectedStyle, originalFileName);
       toast.success("¡Transformación completada!");
@@ -478,7 +477,7 @@ export default function App() {
       try {
         const item = batchItems[i];
         const b64  = (await compressImage(item.file)).split(",")[1];
-        const raw  = await withRetry(() => transformImage(b64, "image/jpeg", selectedStyle, "", {
+        const url  = await withRetry(() => transformImage(b64, "image/jpeg", selectedStyle, "", {
           width: item.width || width, height: item.height || height, depth: item.depth || depth,
           title: item.infoTitle || infoTitle, features: item.infoFeatures || infoFeatures,
           lifestylePrompt: item.lifestylePrompt || lifestylePrompt,
@@ -486,7 +485,6 @@ export default function App() {
           aspectRatio: item.aspectRatio || imageAspectRatio,
           infoStyle: item.infoStyle || infoStyle
         }, userApiKey));
-        const url  = await cropToAspectRatio(raw, item.aspectRatio || imageAspectRatio);
         setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "completed", result: url } : it));
         addToHistory(`data:image/jpeg;base64,${b64}`, url, selectedStyle, item.file.name);
         if (isGoogleAuth) await handleSaveToDrive(url, item.file.name);
