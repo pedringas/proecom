@@ -114,29 +114,32 @@ const ComparisonSlider = ({ before, after }: { before: string; after: string }) 
   );
 };
 
-// ─── Crop to aspect ratio ─────────────────────────────────────────────────────
-const cropToAspectRatio = (base64DataUrl: string, ratio: "1:1" | "9:16" | "16:9"): Promise<string> =>
+// ─── Fit to aspect ratio (letterbox / white padding) ─────────────────────────
+const fitToAspectRatio = (base64DataUrl: string, ratio: "1:1" | "9:16" | "16:9"): Promise<string> =>
   new Promise((resolve, reject) => {
     const img = new Image();
     img.onload = () => {
       const [rw, rh] = ratio.split(":").map(Number);
       const targetRatio = rw / rh;
       const srcRatio = img.width / img.height;
-      let sw: number, sh: number;
-      if (srcRatio > targetRatio) {
-        sh = img.height;
-        sw = Math.round(sh * targetRatio);
+      // Canvas must contain the full source image with target ratio — pad with white
+      let cw: number, ch: number;
+      if (srcRatio >= targetRatio) {
+        cw = img.width;
+        ch = Math.round(img.width / targetRatio);
       } else {
-        sw = img.width;
-        sh = Math.round(sw / targetRatio);
+        ch = img.height;
+        cw = Math.round(img.height * targetRatio);
       }
-      const sx = Math.round((img.width - sw) / 2);
-      const sy = Math.round((img.height - sh) / 2);
+      const ox = Math.round((cw - img.width) / 2);
+      const oy = Math.round((ch - img.height) / 2);
       const canvas = document.createElement("canvas");
-      canvas.width = sw; canvas.height = sh;
+      canvas.width = cw; canvas.height = ch;
       const ctx = canvas.getContext("2d");
       if (!ctx) { reject(new Error("No 2d context")); return; }
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, sw, sh);
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, cw, ch);
+      ctx.drawImage(img, ox, oy);
       resolve(canvas.toDataURL("image/png"));
     };
     img.onerror = reject;
@@ -439,12 +442,13 @@ export default function App() {
     if (!image || !(await ensureApiKey())) return;
     setIsProcessing(true);
     try {
-      const url = await transformImage(image.split(",")[1], mimeType, selectedStyle, "", {
+      const raw = await transformImage(image.split(",")[1], mimeType, selectedStyle, "", {
         width, height, depth,
         title: infoTitle, features: infoFeatures,
         lifestylePrompt, productDescription, aspectRatio: imageAspectRatio,
         infoStyle
       }, userApiKey);
+      const url = await fitToAspectRatio(raw, imageAspectRatio);
       setResult(url);
       addToHistory(image, url, selectedStyle, originalFileName);
       toast.success("¡Transformación completada!");
@@ -477,7 +481,7 @@ export default function App() {
       try {
         const item = batchItems[i];
         const b64  = (await compressImage(item.file)).split(",")[1];
-        const url  = await withRetry(() => transformImage(b64, "image/jpeg", selectedStyle, "", {
+        const raw  = await withRetry(() => transformImage(b64, "image/jpeg", selectedStyle, "", {
           width: item.width || width, height: item.height || height, depth: item.depth || depth,
           title: item.infoTitle || infoTitle, features: item.infoFeatures || infoFeatures,
           lifestylePrompt: item.lifestylePrompt || lifestylePrompt,
@@ -485,6 +489,7 @@ export default function App() {
           aspectRatio: item.aspectRatio || imageAspectRatio,
           infoStyle: item.infoStyle || infoStyle
         }, userApiKey));
+        const url  = await fitToAspectRatio(raw, item.aspectRatio || imageAspectRatio);
         setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "completed", result: url } : it));
         addToHistory(`data:image/jpeg;base64,${b64}`, url, selectedStyle, item.file.name);
         if (isGoogleAuth) await handleSaveToDrive(url, item.file.name);

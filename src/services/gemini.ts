@@ -148,24 +148,36 @@ CRITICAL TEXT ACCURACY RULES (NON-NEGOTIABLE):
 
 ENERGY: Maximum visual intensity. This should look like the most eye-catching product listing on the page. Bold, loud, impossible to ignore.`;
       } else {
-        prompt = `You are a magazine editorial photographer and art director. Create a LIFESTYLE PHOTO of the product in a real natural environment, with title text and feature labels elegantly superimposed on top of the photo. Think high-end magazine spread — like Vogue, Wallpaper*, or a premium brand lookbook.
+        const ar = extraData?.aspectRatio || "1:1";
 
-STEP 1 — LIFESTYLE BACKGROUND SCENE:
-Generate a real, photorealistic environment scene appropriate for this product. The scene must look like a genuine photograph — natural lighting, real textures, depth of field. Examples: a product for the kitchen → marble countertop with morning light and herbs; a tech product → clean wooden desk with soft window light; a beauty product → bathroom vanity with warm golden-hour glow; a sports product → outdoor natural setting. NO graphic design backgrounds. NO solid colors. NO gradients. A REAL SCENE.
+        const layoutInstructions: Record<string, string> = {
+          "1:1": `LAYOUT — SQUARE (1:1):
+Divide the image into two equal vertical halves. LEFT HALF: clean dark or neutral-toned panel with the title in large bold uppercase sans-serif at the top, then the ${featureLines.length} feature items listed below it — each prefixed with a ✓ checkmark or shield icon, bold uppercase text, clear legible size. RIGHT HALF: the full lifestyle photo of the product in its real environment, filling this half edge to edge with a slight vignette.`,
 
-STEP 2 — PRODUCT PLACEMENT:
-Place the product from the attached image naturally within the scene as the clear hero. Maintain 100% visual fidelity to its shape, color, brand and materials. It should look like the product was photographed in that environment — realistic lighting, contact shadow, natural integration.
+          "9:16": `LAYOUT — PORTRAIT (9:16):
+TOP SECTION (upper 20%): title text in large bold uppercase letters centered, high contrast against the background, white or light color with strong shadow.
+CENTER SECTION (middle 55%): the lifestyle photo fills this zone completely — product large and prominent in a real environment, realistic lighting, natural scene.
+BOTTOM SECTION (lower 25%): dark or semi-transparent bar overlaid on the photo. Inside it, list the ${featureLines.length} features in a clean horizontal or grid arrangement — each with a ✓ checkmark or shield icon, bold uppercase white text.`,
 
-STEP 3 — TITLE TEXT OVERLAY:
-Superimpose this exact title text over the photo using clean, elegant typography (thin or medium weight serif or sans-serif, white or very light color with a subtle text shadow for legibility):
+          "16:9": `LAYOUT — LANDSCAPE (16:9):
+LEFT THIRD: bold typographic panel with a solid dark or deeply colored background (derived from the product's tones). Title in large bold uppercase at the top of this panel. Below it, list the ${featureLines.length} features vertically — each with a ✓ checkmark or shield icon, bold uppercase text, clean spacing.
+RIGHT TWO THIRDS: the lifestyle photo fills this zone completely — product prominently placed in a real, photorealistic environment with natural lighting, depth of field, warm professional photography.`,
+        };
 
-TITLE TO RENDER: "${title}"
+        prompt = `You are a professional catalog art director creating an ELEGANT magazine-style product ad. The image must look like a real professional catalog page or magazine advertisement — NOT a graphic design template.
 
-Position it at the top or bottom third of the image. Copy every character exactly.
+SCENE:
+Generate a real, photorealistic lifestyle scene appropriate for this product. Natural lighting, real textures, genuine depth of field. Examples: kitchen product → marble countertop with warm morning light; tech product → clean wooden desk by a window; beauty product → bathroom vanity with golden-hour glow; sports product → outdoor natural setting. NO solid color backgrounds. NO gradients. A REAL PHOTOGRAPHED SCENE.
 
-STEP 4 — FEATURE LABELS OVERLAY:
-Superimpose ${featureLines.length} minimal feature label${featureLines.length !== 1 ? "s" : ""} over the photo. Each label is a simple horizontal line (leader line) pointing to a relevant part of the product or scene, with a small icon and clean text beside it. Style: white text, thin line, small dot at the product. Like a fashion editorial callout or a product spec overlay in a luxury catalog.
+PRODUCT:
+Place the product from the attached image naturally in the scene as the undisputed hero. Maintain 100% visual fidelity — same shape, color, brand, materials. Realistic lighting, contact shadow, natural integration. It must look like it was physically present in that scene.
 
+${layoutInstructions[ar] || layoutInstructions["1:1"]}
+
+TEXT TO RENDER — TITLE: "${title}"
+Copy every character exactly. Do not add, remove or change any letter.
+
+FEATURES TO RENDER (${featureLines.length} items, each with ✓ or shield icon):
 ${featureList}
 
 CRITICAL TEXT ACCURACY RULES (NON-NEGOTIABLE):
@@ -173,8 +185,9 @@ CRITICAL TEXT ACCURACY RULES (NON-NEGOTIABLE):
 - Do not invent words. Do not add decorative text that was not requested.
 - Numbers must be copied exactly as provided.
 - Accents and special characters (á, é, í, ó, ú, ñ, ü) must be preserved exactly.
+- NO arrow lines or leader lines. Use ✓ checkmark or shield icons only.
 
-MOOD: Aspirational, sophisticated, real. The photo must feel like it was shot by a professional photographer, not generated by AI. Natural, warm, editorial.`;
+MOOD: Aspirational, sophisticated, real. Professional catalog quality.`;
       }
       break;
     }
