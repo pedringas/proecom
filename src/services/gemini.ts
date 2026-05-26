@@ -120,23 +120,23 @@ CRITICAL TEXT RULES:
         .join("\n");
 
       if (style === "Pop") {
-        prompt = `You are a professional e-commerce graphic designer creating a VIBRANT POP-STYLE marketing infographic for a product listing.
+        prompt = `You are an explosive graphic designer creating a MAXIMUM-IMPACT POP-STYLE e-commerce infographic. Think comic book cover meets sports poster meets street art.
 
-STEP 1 — PRODUCT:
-Use the product from the attached image as the central hero element. Maintain 100% visual fidelity.
+STEP 1 — BACKGROUND:
+Create a dramatic radial burst / starburst background with rays emanating from the center of the image. Use 2–3 highly saturated colors extracted directly from the product (e.g. if the product is red, use bright red and yellow; if blue, use electric blue and lime). The rays must be sharp, high-contrast, and fill the entire frame edge to edge. No white backgrounds.
 
-STEP 2 — DESIGN (POP STYLE):
-Create a bold, energetic, eye-catching infographic layout. Extract the dominant colors directly from the product itself and use their vibrant, highly-saturated versions as the palette. Add complementary accent colors for maximum visual impact. Think bold gradients, dynamic shapes, strong contrasts. Inspired by top e-commerce listings on MercadoLibre and Amazon.
+STEP 2 — PRODUCT:
+Place the product from the attached image as the central hero, perfectly centered over the burst. Maintain 100% visual fidelity. The product must appear to "pop out" with a strong drop shadow or glow effect behind it.
 
 STEP 3 — TITLE TEXT:
-At the top center of the image, render this exact title text using a bold sans-serif font (Inter or Montserrat):
+Render this exact title in MASSIVE, BOLD 3D lettering at the top of the image. The text must have: thick black outline (stroke), strong drop shadow, slight 3D extrusion effect. Font style: heavy condensed sans-serif (like Impact, Anton, or Bebas Neue). All caps.
 
 TITLE TO RENDER: "${title}"
 
 Copy every character exactly. Do not add, remove or change any letter.
 
 STEP 4 — FEATURE BADGES:
-Around the product, place ${featureLines.length} feature badge${featureLines.length !== 1 ? "s" : ""}. Each badge has a colored background pill/chip with an icon and text. Render each feature text EXACTLY as specified below:
+Around the product, place ${featureLines.length} badge${featureLines.length !== 1 ? "s" : ""}. Each badge must be a bold rounded rectangle or explosive splat shape with: thick 3–4px colored border, strong drop shadow, high-contrast text inside, and a relevant icon. Make them feel like stickers slapped onto the design.
 
 ${featureList}
 
@@ -146,25 +146,25 @@ CRITICAL TEXT ACCURACY RULES (NON-NEGOTIABLE):
 - Numbers must be copied exactly as provided.
 - Accents and special characters (á, é, í, ó, ú, ñ, ü) must be preserved exactly.
 
-LAYOUT: Balanced composition. Product centered. Features distributed evenly around it. Title prominent at top. Use icons relevant to each feature.`;
+ENERGY: Maximum visual intensity. This should look like the most eye-catching product listing on the page. Bold, loud, impossible to ignore.`;
       } else {
-        prompt = `You are a luxury brand graphic designer creating an ELEGANT, SOPHISTICATED marketing infographic for a premium product listing.
+        prompt = `You are a magazine editorial photographer and art director. Create a LIFESTYLE PHOTO of the product in a real natural environment, with title text and feature labels elegantly superimposed on top of the photo. Think high-end magazine spread — like Vogue, Wallpaper*, or a premium brand lookbook.
 
-STEP 1 — PRODUCT:
-Use the product from the attached image as the central hero element. Maintain 100% visual fidelity.
+STEP 1 — LIFESTYLE BACKGROUND SCENE:
+Generate a real, photorealistic environment scene appropriate for this product. The scene must look like a genuine photograph — natural lighting, real textures, depth of field. Examples: a product for the kitchen → marble countertop with morning light and herbs; a tech product → clean wooden desk with soft window light; a beauty product → bathroom vanity with warm golden-hour glow; a sports product → outdoor natural setting. NO graphic design backgrounds. NO solid colors. NO gradients. A REAL SCENE.
 
-STEP 2 — DESIGN (ELEGANT STYLE):
-Create a refined, sophisticated infographic layout. Derive the color palette exclusively from the product's own tones — use muted, desaturated versions of those colors (e.g. if the product is red, use burgundy/rose; if blue, use navy/slate). Combine with neutral whites, warm creams or deep charcoals. Typography must be clean and minimal. Thin elegant lines, generous whitespace, subtle textures. Inspired by luxury brands like Apple, Dyson, or high-end fashion e-commerce.
+STEP 2 — PRODUCT PLACEMENT:
+Place the product from the attached image naturally within the scene as the clear hero. Maintain 100% visual fidelity to its shape, color, brand and materials. It should look like the product was photographed in that environment — realistic lighting, contact shadow, natural integration.
 
-STEP 3 — TITLE TEXT:
-At the top center of the image, render this exact title text using a light-weight or medium serif/sans-serif font (Playfair Display or similar):
+STEP 3 — TITLE TEXT OVERLAY:
+Superimpose this exact title text over the photo using clean, elegant typography (thin or medium weight serif or sans-serif, white or very light color with a subtle text shadow for legibility):
 
 TITLE TO RENDER: "${title}"
 
-Copy every character exactly. Do not add, remove or change any letter.
+Position it at the top or bottom third of the image. Copy every character exactly.
 
-STEP 4 — FEATURE BADGES:
-Around the product, place ${featureLines.length} feature badge${featureLines.length !== 1 ? "s" : ""}. Each badge uses a minimal pill or underline style with subtle color derived from the product palette. Render each feature text EXACTLY as specified below:
+STEP 4 — FEATURE LABELS OVERLAY:
+Superimpose ${featureLines.length} minimal feature label${featureLines.length !== 1 ? "s" : ""} over the photo. Each label is a simple horizontal line (leader line) pointing to a relevant part of the product or scene, with a small icon and clean text beside it. Style: white text, thin line, small dot at the product. Like a fashion editorial callout or a product spec overlay in a luxury catalog.
 
 ${featureList}
 
@@ -174,7 +174,7 @@ CRITICAL TEXT ACCURACY RULES (NON-NEGOTIABLE):
 - Numbers must be copied exactly as provided.
 - Accents and special characters (á, é, í, ó, ú, ñ, ü) must be preserved exactly.
 
-LAYOUT: Balanced, airy composition. Product centered with generous negative space. Features arranged with elegance. Title subtle but legible at the top.`;
+MOOD: Aspirational, sophisticated, real. The photo must feel like it was shot by a professional photographer, not generated by AI. Natural, warm, editorial.`;
       }
       break;
     }
