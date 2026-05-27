@@ -20,7 +20,6 @@ export async function transformImage(
     productDescription?: string;
     aspectRatio?: "1:1" | "16:9" | "9:16";
     infoStyle?: "Pop" | "Elegante";
-    infoScenario?: string;
   },
   apiKey?: string
 ): Promise<string> {
@@ -152,11 +151,11 @@ CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
 
 PRODUCT FIDELITY (NON-NEGOTIABLE): Never invent accessories, change colors, alter proportions or add fake features to the product.`;
       } else {
-        prompt = `STEP 1 — PRODUCT ANALYSIS (context only, do not filter features):
-Analyze the product in the attached image to understand its category, main use, target audience, and the problem it solves. Use this understanding only as context for composing the scene and visual hierarchy — do NOT use it to filter or omit any feature.
-${featureLines.length > 0 ? `\nUSER-PROVIDED FEATURES (render ALL of them, without omitting any):\n${featureList}\n` : ""}
+        prompt = `STEP 1 — PRODUCT ANALYSIS (automatic, internal):
+Analyze the product in the attached image to identify: (1) its category and main use, (2) target audience and purchase motivation, (3) the core problem it solves. Then automatically select the 3 characteristics with the highest visual and commercial impact — ones understandable in under 2 seconds, with high perceived value, that differentiate this product from average listings. These 3 selected features will be rendered as text directly on the photo.
+${featureLines.length > 0 ? `\nUSER-PROVIDED FEATURE CANDIDATES (use as input for your selection):\n${featureList}\n` : ""}
 STEP 2 — SCENE:
-Generate a real, photorealistic lifestyle scene that fills the ENTIRE image edge to edge — natural lighting, real textures, genuine depth of field. ${extraData?.infoScenario ? `Place the product in this specific scene: "${extraData.infoScenario}".` : `Choose a setting appropriate to this product (e.g. kitchen product → marble countertop with warm morning light; tech product → clean wooden desk by a window; beauty product → bathroom vanity with golden-hour glow; sports product → natural outdoor setting).`} NO solid color backgrounds. NO gradients. A REAL photographed-looking scene. The photo has NO panels, NO color blocks, NO overlays, NO semi-transparent layers of any kind.
+Generate a real, photorealistic lifestyle scene that fills the ENTIRE image edge to edge — natural lighting, real textures, genuine depth of field. Choose a setting appropriate to this product (e.g. kitchen product → marble countertop with warm morning light; tech product → clean wooden desk by a window; beauty product → bathroom vanity with golden-hour glow; sports product → natural outdoor setting). NO solid color backgrounds. NO gradients. A REAL photographed-looking scene. The photo has NO panels, NO color blocks, NO overlays, NO semi-transparent layers of any kind.
 
 STEP 3 — PRODUCT:
 Place the product from the attached image naturally in the scene as the undisputed hero. Maintain 100% visual fidelity — same shape, color, brand, materials. Realistic lighting, contact shadow, natural integration. It must look like it was physically present in that scene.
@@ -167,12 +166,12 @@ TITLE: "${title}"
 Copy every character exactly. Do not add, remove or change any letter.
 
 STEP 5 — FEATURES:
-Float ALL the provided features directly over the photo. Each feature: a ✓ checkmark or shield icon + short bold uppercase white text with strong drop shadow. NO background behind the text, NO panels, NO bordered boxes, NO arrow lines. Text floats over the photo exactly like a magazine cover headline. Render every single feature — do not omit any.
+Float the 3 auto-selected features directly over the photo. Each feature: a ✓ checkmark or shield icon + short bold uppercase white text with strong drop shadow. NO background behind the text, NO panels, NO bordered boxes, NO arrow lines. Text floats over the photo exactly like a magazine cover headline.
 
 LAYOUT BY ASPECT RATIO — apply the one matching the requested output:
-- 1:1 (square): title large at the top of the photo → product centered → features at the bottom, spaced horizontally.
-- 9:16 (portrait): title at the top of the photo → product large and centered → features in a horizontal row near the bottom.
-- 16:9 (landscape): title + features stacked vertically on the left side of the photo → product prominent on the right.
+- 1:1 (square): title large at the top of the photo → product centered → 3 features at the bottom, spaced horizontally.
+- 9:16 (portrait): title at the top of the photo → product large and centered → 3 features in a horizontal row near the bottom.
+- 16:9 (landscape): title + 3 features stacked vertically on the left side of the photo → product prominent on the right.
 
 TYPOGRAPHY RULE: Every character of text — title and features — is rendered in pure white (#FFFFFF), bold weight, clean sans-serif, with a strong multi-layer drop shadow (e.g. 2px black shadow + 4px soft black shadow) to ensure legibility over any background. This is the ONLY technique allowed for text readability. No backgrounds of any kind.
 
@@ -180,7 +179,6 @@ MOOD: Aspirational, sophisticated. Premium editorial magazine cover — full-ble
 
 CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
 - Copy title EXACTLY. Do not paraphrase, translate, summarize or add any word.
-- Render ALL features EXACTLY as provided. Do not omit, merge or rewrite any feature.
 - Numbers must be copied exactly. Preserve all accents (á, é, í, ó, ú, ñ, ü).
 - NO arrow lines or leader lines. Use ✓ checkmark or shield icons only.
 - Do NOT invent decorative text that was not requested.

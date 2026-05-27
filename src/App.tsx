@@ -47,7 +47,6 @@ interface BatchItem {
   productDescription?: string;
   aspectRatio?: "1:1" | "16:9" | "9:16";
   infoStyle?: "Pop" | "Elegante";
-  infoScenario?: string;
 }
 
 // ─── Style definitions ────────────────────────────────────────────────────────
@@ -218,7 +217,6 @@ export default function App() {
   const [infoTitle, setInfoTitle]       = useState("");
   const [infoFeatures, setInfoFeatures] = useState("");
   const [infoStyle, setInfoStyle]       = useState<"Pop" | "Elegante">("Pop");
-  const [infoScenario, setInfoScenario] = useState("");
   const [lifestylePrompt, setLifestylePrompt]       = useState("");
   const [productDescription, setProductDescription] = useState("");
 
@@ -392,7 +390,7 @@ export default function App() {
       id: Math.random().toString(36).substr(2, 9), file,
       preview: URL.createObjectURL(file), status: "pending" as const,
       width: "", height: "", depth: "", infoTitle: "", infoFeatures: "",
-      lifestylePrompt: "", productDescription: "", infoScenario: ""
+      lifestylePrompt: "", productDescription: ""
     }))]);
     setIsBatchMode(true);
     if (batchInputRef.current)       batchInputRef.current.value = "";
@@ -448,7 +446,7 @@ export default function App() {
         width, height, depth,
         title: infoTitle, features: infoFeatures,
         lifestylePrompt, productDescription, aspectRatio: imageAspectRatio,
-        infoStyle, infoScenario
+        infoStyle
       }, userApiKey);
       const url = await fitToAspectRatio(raw, imageAspectRatio);
       setResult(url);
@@ -489,8 +487,7 @@ export default function App() {
           lifestylePrompt: item.lifestylePrompt || lifestylePrompt,
           productDescription: item.productDescription || productDescription,
           aspectRatio: item.aspectRatio || imageAspectRatio,
-          infoStyle: item.infoStyle || infoStyle,
-          infoScenario: item.infoScenario || infoScenario
+          infoStyle: item.infoStyle || infoStyle
         }, userApiKey));
         const url  = await fitToAspectRatio(raw, item.aspectRatio || imageAspectRatio);
         setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "completed", result: url } : it));
@@ -642,13 +639,6 @@ export default function App() {
               className={cn("input-premium text-xs h-24", !infoFeatures.trim() && "border-red-500/50")} />
             <p className="text-[9px] text-white/30 uppercase tracking-tighter">Una característica por línea</p>
           </div>
-          {infoStyle === "Elegante" && (
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase text-brand-violet/60">Escenario sugerido (Opcional)</Label>
-              <Input placeholder="Ej: parque al aire libre, cocina moderna, escritorio de oficina..." value={infoScenario} onChange={e => setInfoScenario(e.target.value)}
-                className="input-premium h-10 text-xs" />
-            </div>
-          )}
         </motion.div>
       )}
     </AnimatePresence>
@@ -687,11 +677,6 @@ export default function App() {
         <Textarea placeholder={"Característica 1\nCaracterística 2"} value={item.infoFeatures || ""}
           onChange={e => upd({ infoFeatures: e.target.value })}
           className={cn("h-16 text-[10px] bg-black/40 border-white/5", !item.infoFeatures?.trim() && "border-red-500/50")} />
-        {infoStyle === "Elegante" && (
-          <Input placeholder="Escenario sugerido (Opcional)" value={item.infoScenario || ""}
-            onChange={e => upd({ infoScenario: e.target.value })}
-            className="h-8 text-[10px] bg-black/40 border-white/5" />
-        )}
       </div>
     );
     return null;
