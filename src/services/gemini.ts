@@ -73,8 +73,14 @@ KEY REQUIREMENTS:
       const w = extraData?.width || "0";
       const h = extraData?.height || "0";
       const d = extraData?.depth || "0";
+      const ar = extraData?.aspectRatio || "1:1";
+      const sizeMap: Record<string, string> = {
+        "1:1":  "1024x1024",
+        "16:9": "1792x1024",
+        "9:16": "1024x1792",
+      };
 
-      prompt = `You are a professional product photographer and graphic designer creating a technical dimensions sheet for an e-commerce listing.
+      const technicalPrompt = `You are a professional product photographer and graphic designer creating a technical dimensions sheet for an e-commerce listing.
 
 STEP 1 — PRODUCT PHOTO:
 Place the original product from the attached image on a pure white background (#FFFFFF). Keep 100% visual fidelity: same shape, angle, colors, brand, labels. Do not alter the product in any way.
@@ -82,7 +88,7 @@ Place the original product from the attached image on a pure white background (#
 STEP 2 — DIMENSION LINES:
 Add clean, minimal dimension annotation lines directly on the image, similar to architectural or industrial design drawings:
 - A horizontal double-headed arrow (↔) below the product, labeled exactly: "${w} cm"
-- A vertical double-headed arrow (↕) to the right of the product, labeled exactly: "${h} cm"  
+- A vertical double-headed arrow (↕) to the right of the product, labeled exactly: "${h} cm"
 - A diagonal double-headed arrow at the depth axis, labeled exactly: "${d} cm"
 Use thin lines (1-2px), color: #555555. Place small perpendicular end caps on each arrow.
 
@@ -97,7 +103,27 @@ CRITICAL TEXT RULES:
 - Do NOT change, round, invent or alter any number or word.
 - Do NOT use abbreviations. Do NOT add extra words.
 - Double-check every character before rendering.`;
-      break;
+
+      const techRes = await fetch("/api/generate-image-openai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          style: "Technical",
+          prompt: technicalPrompt,
+          size: sizeMap[ar] || "1024x1024",
+          image: base64Image,
+          mimeType,
+        }),
+      });
+
+      if (!techRes.ok) {
+        const err = await techRes.text();
+        throw new Error(`Technical API error ${techRes.status}: ${err}`);
+      }
+
+      const techData = await techRes.json() as { b64_json?: string };
+      if (!techData.b64_json) throw new Error("No image returned by API.");
+      return `data:image/png;base64,${techData.b64_json}`;
     }
 
     // ─── 5. INFOGRAFÍA ───────────────────────────────────────────────────────
@@ -243,7 +269,7 @@ CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
     "9:16": "1024x1792",
   };
 
-  const response = await fetch("/api/generate-infographic", {
+  const response = await fetch("/api/generate-image-openai", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

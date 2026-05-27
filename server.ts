@@ -231,13 +231,13 @@ Technical description context: ${description}`;
   }
 });
 
-app.post("/api/generate-infographic", async (req, res) => {
+app.post("/api/generate-image-openai", async (req, res) => {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: "OPENAI_API_KEY not configured on server" });
   }
 
-  const { prompt, size, image, mimeType } = req.body;
+  const { prompt, size, image, mimeType, style } = req.body;
   if (!prompt) return res.status(400).json({ error: "prompt is required" });
   if (!image)  return res.status(400).json({ error: "image is required" });
 
@@ -269,8 +269,8 @@ app.post("/api/generate-infographic", async (req, res) => {
 
     res.json({ b64_json: b64 });
   } catch (error) {
-    console.error("Error calling OpenAI:", error);
-    res.status(500).json({ error: "Error generating infographic" });
+    console.error(`OpenAI error [style=${style || "unknown"}]:`, error);
+    res.status(500).json({ error: "Error generating image" });
   }
 });
 

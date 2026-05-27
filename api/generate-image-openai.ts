@@ -10,11 +10,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "OPENAI_API_KEY not configured on server" });
   }
 
-  const { prompt, size, image, mimeType } = req.body as {
+  const { prompt, size, image, mimeType, style } = req.body as {
     prompt?: string;
     size?: string;
     image?: string;
     mimeType?: string;
+    style?: string;
   };
 
   if (!prompt) return res.status(400).json({ error: "prompt is required" });
@@ -48,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     res.json({ b64_json: b64 });
   } catch (error) {
-    console.error("Error calling OpenAI:", error);
-    res.status(500).json({ error: "Error generating infographic" });
+    console.error(`OpenAI error [style=${style || "unknown"}]:`, error);
+    res.status(500).json({ error: "Error generating image" });
   }
 }
