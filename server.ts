@@ -143,6 +143,49 @@ app.post("/api/drive/upload", async (req, res) => {
   }
 });
 
+app.post("/api/generate-infographic", async (req, res) => {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return res.status(500).json({ error: "OPENAI_API_KEY not configured on server" });
+  }
+
+  const { prompt, size } = req.body;
+  if (!prompt) {
+    return res.status(400).json({ error: "prompt is required" });
+  }
+
+  try {
+    const openaiRes = await fetch("https://api.openai.com/v1/images/generations", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        model: "gpt-image-1",
+        prompt,
+        n: 1,
+        size: size || "1024x1024",
+        response_format: "b64_json",
+      }),
+    });
+
+    if (!openaiRes.ok) {
+      const err = await openaiRes.text();
+      return res.status(openaiRes.status).json({ error: err });
+    }
+
+    const data = await openaiRes.json() as { data?: { b64_json?: string }[] };
+    const b64 = data.data?.[0]?.b64_json;
+    if (!b64) return res.status(500).json({ error: "No image returned by OpenAI" });
+
+    res.json({ b64_json: b64 });
+  } catch (error) {
+    console.error("Error calling OpenAI:", error);
+    res.status(500).json({ error: "Error generating infographic" });
+  }
+});
+
 // Vite middleware setup
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {

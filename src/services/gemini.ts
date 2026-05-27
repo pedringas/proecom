@@ -106,7 +106,7 @@ CRITICAL TEXT RULES:
 
     // ─── 5. INFOGRAFÍA ───────────────────────────────────────────────────────
     case "Infographic": {
-      return await generateInfographic(base64Image, mimeType, extraData, apiKey);
+      return await generateInfographic(base64Image, mimeType, extraData);
     }
 
     default:
@@ -162,8 +162,7 @@ async function generateInfographic(
     aspectRatio?: "1:1" | "16:9" | "9:16";
     infoStyle?: "Pop" | "Elegante";
     [key: string]: unknown;
-  },
-  apiKey?: string
+  }
 ): Promise<string> {
   const title = extraData?.title || "";
   const features = (extraData?.features as string) || "";
@@ -252,29 +251,23 @@ CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
     "9:16": "1024x1792",
   };
 
-  const response = await fetch("https://api.openai.com/v1/images/generations", {
+  const response = await fetch("/api/generate-infographic", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey || process.env.OPENAI_API_KEY || ""}`,
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "gpt-image-1",
       prompt,
-      n: 1,
       size: sizeMap[ar] || "1024x1024",
-      response_format: "b64_json",
     }),
   });
 
   if (!response.ok) {
     const err = await response.text();
-    throw new Error(`OpenAI API error ${response.status}: ${err}`);
+    throw new Error(`Infographic API error ${response.status}: ${err}`);
   }
 
-  const data = await response.json();
-  const b64 = data.data?.[0]?.b64_json;
-  if (!b64) throw new Error("No image returned by OpenAI API.");
+  const data = await response.json() as { b64_json?: string };
+  const b64 = data.b64_json;
+  if (!b64) throw new Error("No image returned by infographic API.");
   return `data:image/png;base64,${b64}`;
 }
 
