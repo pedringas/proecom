@@ -43,6 +43,7 @@ interface BatchItem {
   depth?: string;
   infoTitle?: string;
   infoFeatures?: string;
+  infoScenario?: string;
   lifestylePrompt?: string;
   productDescription?: string;
   aspectRatio?: "1:1" | "16:9" | "9:16";
@@ -216,6 +217,7 @@ export default function App() {
   const [depth, setDepth]               = useState("");
   const [infoTitle, setInfoTitle]       = useState("");
   const [infoFeatures, setInfoFeatures] = useState("");
+  const [infoScenario, setInfoScenario] = useState("");
   const [infoStyle, setInfoStyle]       = useState<"Pop" | "Elegante">("Pop");
   const [lifestylePrompt, setLifestylePrompt]       = useState("");
   const [productDescription, setProductDescription] = useState("");
@@ -416,7 +418,7 @@ export default function App() {
     try {
       const raw = await transformImage(image.split(",")[1], mimeType, selectedStyle, "", {
         width, height, depth,
-        title: infoTitle, features: infoFeatures,
+        title: infoTitle, features: infoFeatures, infoScenario,
         lifestylePrompt, productDescription, aspectRatio: imageAspectRatio,
         infoStyle
       });
@@ -456,6 +458,7 @@ export default function App() {
         const raw  = await withRetry(() => transformImage(b64, "image/jpeg", selectedStyle, "", {
           width: item.width || width, height: item.height || height, depth: item.depth || depth,
           title: item.infoTitle || infoTitle, features: item.infoFeatures || infoFeatures,
+          infoScenario: item.infoScenario || infoScenario,
           lifestylePrompt: item.lifestylePrompt || lifestylePrompt,
           productDescription: item.productDescription || productDescription,
           aspectRatio: item.aspectRatio || imageAspectRatio,
@@ -610,6 +613,14 @@ export default function App() {
               className={cn("input-premium text-xs h-24", !infoFeatures.trim() && "border-red-500/50")} />
             <p className="text-[9px] text-white/30 uppercase tracking-tighter">Una característica por línea</p>
           </div>
+          {infoStyle === "Elegante" && (
+            <div className="space-y-2">
+              <Label className="text-[10px] uppercase text-brand-violet/60">Escenario (Opcional)</Label>
+              <Input placeholder="Ej: Mesa de madera con taza humeante y cuchara" value={infoScenario}
+                onChange={e => setInfoScenario(e.target.value)} className="input-premium h-10 text-xs" />
+              <p className="text-[9px] text-white/30 uppercase tracking-tighter">Describe la escena donde se usa el producto</p>
+            </div>
+          )}
         </motion.div>
       )}
     </AnimatePresence>
@@ -648,6 +659,11 @@ export default function App() {
         <Textarea placeholder={"Característica 1\nCaracterística 2"} value={item.infoFeatures || ""}
           onChange={e => upd({ infoFeatures: e.target.value })}
           className={cn("h-16 text-[10px] bg-black/40 border-white/5", !item.infoFeatures?.trim() && "border-red-500/50")} />
+        {(item.infoStyle || infoStyle) === "Elegante" && (
+          <Input placeholder="Escenario (Opcional)" value={item.infoScenario || ""}
+            onChange={e => upd({ infoScenario: e.target.value })}
+            className="h-8 text-[10px] bg-black/40 border-white/5" />
+        )}
       </div>
     );
     return null;
