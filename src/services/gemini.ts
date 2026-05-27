@@ -184,7 +184,6 @@ async function generateInfographic(
 ): Promise<string> {
   const title = extraData?.title || "";
   const features = (extraData?.features as string) || "";
-  const infoStyle = extraData?.infoStyle || "Pop";
   const ar = (extraData?.aspectRatio as string) || "1:1";
 
   const featureLines = features
@@ -196,72 +195,60 @@ async function generateInfographic(
     .map((f: string, i: number) => `Feature ${i + 1}: "${f}"`)
     .join("\n");
 
-  let prompt = "";
+  const arDescriptions: Record<string, string> = {
+    "1:1":  "SQUARE FORMAT (1:1) — equal width and height. Optimize all composition, text sizing and product placement for a perfectly square canvas",
+    "9:16": "VERTICAL/PORTRAIT FORMAT (9:16) — tall vertical phone screen. Design for mobile-first vertical scroll, with stacked layout optimized for this tall format",
+    "16:9": "HORIZONTAL/LANDSCAPE FORMAT (16:9) — wide horizontal banner. Design for a wide screen with horizontal composition, product on one side and text on the other",
+  };
 
-  if (infoStyle === "Pop") {
-    prompt = `Create a MAXIMUM-IMPACT POP-STYLE e-commerce infographic. Think comic book cover meets sports poster meets street art.
+  const prompt = `GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT. ${arDescriptions[ar] || ar}. This is the most critical requirement — design everything for this ratio from the start.
 
-STEP 1 — BACKGROUND:
-Create an explosive radial burst / starburst background with sharp rays emanating from the center, filling the entire frame edge to edge. Use 2–3 highly saturated complementary colors (e.g. bright red + yellow, electric blue + lime, vivid orange + purple). High-contrast rays, no white backgrounds.
+You are an expert in e-commerce, visual neuromarketing and conversion optimization for MercadoLibre. Your mission: create the most effective product infographic possible to maximize clicks, trust and conversions.
 
-STEP 2 — PRODUCT:
-Place a photorealistic product as the central hero. The product must appear to "pop out" with a strong drop shadow or glow effect behind it.
+STEP 1 — AUTOMATIC PRODUCT ANALYSIS:
+Before designing, analyze the attached product image and determine:
+- Product category and specific use
+- Target audience and their main purchase motivation
+- Core problem the product solves
+- Visual personality: premium / fun / technical / natural / sporty / etc.
+Use this analysis to make every design decision below.
 
-STEP 3 — TITLE:
-Convert the title to ALL CAPS before rendering. Always render the title in uppercase, regardless of how it was typed.
-Render in MASSIVE, BOLD 3D lettering. Thick black outline (stroke), strong drop shadow, slight 3D extrusion effect. Heavy condensed sans-serif (Impact / Anton / Bebas Neue).
+STEP 2 — CREATIVE DIRECTION (YOU DECIDE):
+Based on your product analysis, freely choose the most impactful visual composition. You are not locked to any fixed layout. You can choose:
+- Background: lifestyle scene, color gradient, abstract pattern, studio white, explosive burst — whatever best serves the product
+- Composition: product centered, off-center, hero left/right, diagonal, floating — whatever maximizes visual impact
+- Color palette: derive from the product's own colors and brand, or choose a complementary palette that elevates it
+- Typography style: 3D bold, clean magazine, handwritten accent, mixed — choose what fits the product's personality
+- Badge/feature style: stickers, floating text, checkmarks, icons, minimal lines — choose what fits the visual direction
+
+STEP 3 — MANDATORY TEXT ELEMENTS:
 TITLE: "${title}"
-Do not add, remove or change any word — only convert to uppercase.
+- Render in ALL CAPS, exactly as written above (no word changes, no additions, no omissions — only convert to uppercase)
+- Make it the dominant typographic element, impossible to miss
+- Use an accent line, underline, or decorative element to make it stand out
 
-STEP 4 — FEATURE BADGES:
-Render ALL features listed below without exception. Do not select, filter or omit any of them. Every feature gets its own badge: bold rounded rectangle or explosive splat shape, thick 3–4px colored border, strong drop shadow, bold relevant icon + short bold uppercase text. Feel like stickers slapped onto a sports poster.
-${featureLines.length > 0 ? `\nFEATURES TO RENDER (ALL of them, no exceptions):\n${featureList}\n` : ""}
-LAYOUT BY ASPECT RATIO — apply the layout matching the image dimensions:
-- Square (1:1): product perfectly centered, badges arranged around it (top-left, top-right, bottom-center).
-- Portrait (9:16): title large at the top → product dominant in the center → badges in a row below.
-- Landscape (16:9): product on the right two-thirds → title + badges stacked vertically on the left third.
+FEATURES — render ALL of the following without exception. Do not select, filter, merge or omit any:
+${featureLines.length > 0 ? `${featureList}` : "(no features provided)"}
+- Every feature must be clearly legible and individually distinguishable
+- Use icons, checkmarks, or badges to make each feature scannable at a glance
 
-ENERGY: Maximum visual intensity. Sports poster meets comic book cover. Bold, loud, impossible to scroll past.
+STEP 4 — VISUAL STYLE:
+- Photography/rendering: hyperrealistic, high-end commercial quality
+- Product must be rendered with 100% fidelity to the attached reference image (same shape, colors, materials, logos)
+- Typography: modern, bold, professional — no default or generic fonts
+- Overall mood: aspirational, trustworthy, conversion-optimized
+- The final image must look like it was designed by a top-tier MercadoLibre conversion specialist
 
-CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
-- Title: render every word exactly, converted to UPPERCASE.
-- Features: render ALL of them exactly as provided. Do not omit, merge or rewrite any.
-- Numbers must be copied exactly. Preserve all accents (á, é, í, ó, ú, ñ, ü).
-- Do NOT invent decorative text that was not requested.`;
-  } else {
-    prompt = `Create an ELEGANT magazine-style product infographic. Premium catalog / editorial magazine quality — full-bleed lifestyle photo with text floating on top.
+STEP 5 — CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
+- Title: every word rendered exactly as given, in ALL CAPS. Do not change, add or remove any word.
+- Features: ALL of them rendered exactly as provided. Do not omit, merge, paraphrase or rewrite any.
+- Copy every number exactly (do not round or alter).
+- Preserve all Spanish accents and special characters (á, é, í, ó, ú, ñ, ü).
+- Do NOT invent any text that was not explicitly provided.
 
-STEP 1 — SCENE:
-Generate a real, photorealistic lifestyle scene that fills the ENTIRE image edge to edge — natural lighting, real textures, genuine depth of field. Choose an aspirational setting appropriate to the product (e.g. kitchen product → marble countertop with warm morning light; tech product → clean wooden desk by a window; beauty product → bathroom vanity with golden-hour glow; sports product → natural outdoor setting). NO solid color backgrounds. NO gradients. A REAL photographed-looking scene. The photo has NO panels, NO color blocks, NO overlays, NO semi-transparent layers of any kind.
+PRODUCT FIDELITY (NON-NEGOTIABLE):
+The product in the final image must be 100% faithful to the attached reference photo — same exact shape, colors, brand markings, materials and proportions. Do not redesign, reimagine or alter the product in any way.`;
 
-STEP 2 — PRODUCT:
-Place a photorealistic product naturally in the scene as the undisputed hero. Realistic lighting, contact shadow, natural integration. It must look like it was physically present in that scene.
-
-STEP 3 — TITLE:
-Convert the title to ALL CAPS before rendering. Always render the title in uppercase, regardless of how it was typed.
-Float the title directly over the photo in large, bold, uppercase, clean sans-serif. Pure white text (#FFFFFF) with a strong multi-layer drop shadow ONLY (e.g. 2px solid black shadow + 4px soft black shadow). NO background behind the title — no box, no rounded rectangle, no pill shape, no color block, no semi-transparent layer. The text sits directly on the photo with shadow as the only readability aid, like a magazine cover.
-TITLE: "${title}"
-Do not add, remove or change any word — only convert to uppercase.
-
-STEP 4 — FEATURES:
-Render ALL features listed below without exception. Do not select, filter or omit any of them. Float each feature directly over the photo: a ✓ checkmark or shield icon + short bold uppercase white text with strong drop shadow. NO background behind the text, NO panels, NO bordered boxes, NO arrow lines. Text floats over the photo exactly like a magazine cover headline.
-${featureLines.length > 0 ? `\nFEATURES TO RENDER (ALL of them, no exceptions):\n${featureList}\n` : ""}
-LAYOUT BY ASPECT RATIO — apply the layout matching the image dimensions:
-- Square (1:1): title large at the top of the photo → product centered → features at the bottom, spaced horizontally.
-- Portrait (9:16): title at the top → product large and centered → features in a horizontal row near the bottom.
-- Landscape (16:9): title + features stacked vertically on the left side → product prominent on the right.
-
-TYPOGRAPHY RULE: Every character of text — title and features — is rendered in pure white (#FFFFFF), bold weight, clean sans-serif, with a strong multi-layer drop shadow. This is the ONLY technique allowed for text readability. No backgrounds, boxes or overlays of any kind behind any text.
-
-MOOD: Aspirational, sophisticated. Premium editorial magazine cover — full-bleed photo, text floating on top.
-
-CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
-- Title: render every word exactly, converted to UPPERCASE. No background behind it.
-- Features: render ALL of them exactly as provided. Do not omit, merge or rewrite any.
-- Numbers must be copied exactly. Preserve all accents (á, é, í, ó, ú, ñ, ü).
-- NO arrow lines or leader lines. Use ✓ checkmark or shield icons only.
-- Do NOT invent decorative text that was not requested.`;
-  }
 
   const sizeMap: Record<string, string> = {
     "1:1":  "1024x1024",
