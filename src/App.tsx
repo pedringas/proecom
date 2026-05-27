@@ -258,6 +258,8 @@ export default function App() {
   const cameraInputRef      = useRef<HTMLInputElement>(null);
   const batchInputRef       = useRef<HTMLInputElement>(null);
   const batchCameraInputRef = useRef<HTMLInputElement>(null);
+  const csvInputRef         = useRef<HTMLInputElement>(null);
+  const [batchDropActive, setBatchDropActive] = useState(false);
 
   // Drag & drop reorder
   const dragIndex              = useRef<number | null>(null);
@@ -369,6 +371,84 @@ export default function App() {
     setIsBatchMode(true);
     if (batchInputRef.current)       batchInputRef.current.value = "";
     if (batchCameraInputRef.current) batchCameraInputRef.current.value = "";
+  };
+
+  // ── Batch drag & drop upload ─────────────────────────────────────────────
+  const handleBatchDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setBatchDropActive(false);
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith("image/"));
+    if (!files.length) return;
+    setBatchItems(prev => [...prev, ...files.map(file => ({
+      id: Math.random().toString(36).substr(2, 9), file,
+      preview: URL.createObjectURL(file), status: "pending" as const,
+      width: "", height: "", depth: "", infoTitle: "", infoFeatures: "",
+      lifestylePrompt: "", productDescription: ""
+    }))]);
+    setIsBatchMode(true);
+  };
+
+  // ── CSV template download ─────────────────────────────────────────────────
+  const downloadCsvTemplate = () => {
+    let headers: string;
+    let example: string;
+    if (selectedStyle === "Technical") {
+      headers = "sku,ancho,alto,profundo";
+      example = "producto-001,30,20,15";
+    } else if (selectedStyle === "Infographic") {
+      headers = "sku,titulo,caracteristicas,estilo,escenario";
+      example = "producto-001,Mi Producto Premium,Duradero|Elegante|Económico,Pop,";
+    } else {
+      headers = "sku,descripcion_producto,entorno";
+      example = "producto-001,Descripción del producto,Cocina moderna con luz natural";
+    }
+    const csv = `${headers}\n${example}`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "plantilla_lote.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  // ── CSV import & auto-match by SKU ────────────────────────────────────────
+  const handleCsvImport = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) { toast.error("El CSV no tiene datos."); return; }
+      const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+      const idx = (col: string) => headers.indexOf(col);
+      let matched = 0;
+      setBatchItems(prev => prev.map(item => {
+        const sku = item.file.name.replace(/\.[^/.]+$/, "");
+        const row = lines.slice(1).find(l => {
+          const cols = l.split(",");
+          return cols[idx("sku")]?.trim() === sku;
+        });
+        if (!row) return item;
+        const cols = row.split(",");
+        const get = (col: string) => idx(col) >= 0 ? (cols[idx(col)] || "").trim() : "";
+        matched++;
+        return {
+          ...item,
+          infoTitle:          get("titulo")               || item.infoTitle,
+          infoFeatures:       get("caracteristicas").replace(/\|/g, "\n") || item.infoFeatures,
+          infoStyle:          (get("estilo") as "Pop" | "Elegante") || item.infoStyle,
+          infoScenario:       get("escenario")             || item.infoScenario,
+          width:              get("ancho")                 || item.width,
+          height:             get("alto")                  || item.height,
+          depth:              get("profundo")              || item.depth,
+          productDescription: get("descripcion_producto")  || item.productDescription,
+          lifestylePrompt:    get("entorno")               || item.lifestylePrompt,
+        };
+      }));
+      toast.success(`CSV importado: ${matched} de ${lines.length - 1} items coincidieron.`);
+    };
+    reader.readAsText(file);
+    if (csvInputRef.current) csvInputRef.current.value = "";
   };
 
   // ── Form validation ───────────────────────────────────────────────────────
@@ -682,6 +762,7 @@ export default function App() {
         <input type="file" ref={cameraInputRef}      onChange={e => e.target.files?.[0] && processFile(e.target.files[0])} className="hidden" accept="image/*" capture="environment" />
         <input type="file" ref={batchInputRef}       onChange={handleBatchFiles} className="hidden" accept="image/*" multiple />
         <input type="file" ref={batchCameraInputRef} onChange={handleBatchFiles} className="hidden" accept="image/*" capture="environment" />
+        <input type="file" ref={csvInputRef}         onChange={handleCsvImport}  className="hidden" accept=".csv,text/csv" />
 
         {/* Header */}
         {!isEmbed && (
@@ -1019,8 +1100,15 @@ export default function App() {
                         </Button>
                       )}
                     </div>
-                    <div className="border-2 border-dashed border-brand-violet/30 rounded-2xl p-6 text-center bg-brand-violet/5 flex flex-col items-center gap-4">
-                      <p className="text-sm font-bold text-white uppercase tracking-widest">Añadir Imágenes</p>
+                    <div
+                      className={cn("border-2 border-dashed rounded-2xl p-6 text-center bg-brand-violet/5 flex flex-col items-center gap-4 transition-colors",
+                        batchDropActive ? "border-brand-violet bg-brand-violet/20" : "border-brand-violet/30")}
+                      onDragOver={e => { e.preventDefault(); setBatchDropActive(true); }}
+                      onDragLeave={() => setBatchDropActive(false)}
+                      onDrop={handleBatchDrop}>
+                      <p className="text-sm font-bold text-white uppercase tracking-widest">
+                        {batchDropActive ? "Soltar imágenes aquí" : "Añadir Imágenes"}
+                      </p>
                       <div className="flex gap-3 w-full">
                         <Button variant="outline" onClick={() => batchInputRef.current?.click()}
                           className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 h-10 text-[10px] uppercase">
@@ -1031,6 +1119,18 @@ export default function App() {
                           <Camera className="w-4 h-4 mr-2" /> Cámara
                         </Button>
                       </div>
+                      {batchItems.length === 0 && (
+                        <div className="flex gap-2 w-full">
+                          <Button variant="outline" onClick={downloadCsvTemplate}
+                            className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 h-9 text-[10px] uppercase">
+                            <Download className="w-3 h-3 mr-1.5" /> Modelo CSV
+                          </Button>
+                          <Button variant="outline" onClick={() => csvInputRef.current?.click()}
+                            className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 h-9 text-[10px] uppercase">
+                            <Upload className="w-3 h-3 mr-1.5" /> Importar CSV
+                          </Button>
+                        </div>
+                      )}
                     </div>
 
                     {batchItems.length > 0 && (
