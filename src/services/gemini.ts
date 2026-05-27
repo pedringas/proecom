@@ -120,74 +120,68 @@ CRITICAL TEXT RULES:
         .join("\n");
 
       if (style === "Pop") {
-        prompt = `You are an explosive graphic designer creating a MAXIMUM-IMPACT POP-STYLE e-commerce infographic. Think comic book cover meets sports poster meets street art.
+        prompt = `STEP 1 — PRODUCT ANALYSIS (automatic, internal):
+Analyze the product in the attached image to identify: (1) its category and main use, (2) target audience and purchase motivation, (3) the core problem it solves. Then automatically select the 3 characteristics with the highest visual and commercial impact — ones understandable in under 2 seconds, with high perceived value, that differentiate this product from average listings. These 3 selected features will be shown as the badges in the design.
+${featureLines.length > 0 ? `\nUSER-PROVIDED FEATURE CANDIDATES (use as input for your selection):\n${featureList}\n` : ""}
+STEP 2 — BACKGROUND:
+Create an explosive radial burst / starburst background with sharp rays emanating from the center, filling the entire frame edge to edge. Extract 2–3 highly saturated colors directly from the product (e.g. if the product is red → bright red + yellow; if blue → electric blue + lime). High-contrast rays, no white backgrounds.
 
-STEP 1 — BACKGROUND:
-Create a dramatic radial burst / starburst background with rays emanating from the center of the image. Use 2–3 highly saturated colors extracted directly from the product (e.g. if the product is red, use bright red and yellow; if blue, use electric blue and lime). The rays must be sharp, high-contrast, and fill the entire frame edge to edge. No white backgrounds.
+STEP 3 — PRODUCT:
+Place the product from the attached image as the central hero. Maintain 100% visual fidelity — same shape, color, brand, materials. The product must appear to "pop out" with a strong drop shadow or glow effect behind it.
 
-STEP 2 — PRODUCT:
-Place the product from the attached image as the central hero, perfectly centered over the burst. Maintain 100% visual fidelity. The product must appear to "pop out" with a strong drop shadow or glow effect behind it.
-
-STEP 3 — TITLE TEXT:
-Render this exact title in MASSIVE, BOLD 3D lettering at the top of the image. The text must have: thick black outline (stroke), strong drop shadow, slight 3D extrusion effect. Font style: heavy condensed sans-serif (like Impact, Anton, or Bebas Neue). All caps.
-
-TITLE TO RENDER: "${title}"
-
+STEP 4 — TITLE:
+Render this exact title in MASSIVE, BOLD 3D lettering. Thick black outline (stroke), strong drop shadow, slight 3D extrusion effect. Heavy condensed sans-serif (Impact / Anton / Bebas Neue), all caps.
+TITLE: "${title}"
 Copy every character exactly. Do not add, remove or change any letter.
 
-STEP 4 — FEATURE BADGES:
-Around the product, place ${featureLines.length} badge${featureLines.length !== 1 ? "s" : ""}. Each badge must be a bold rounded rectangle or explosive splat shape with: thick 3–4px colored border, strong drop shadow, high-contrast text inside, and a relevant icon. Make them feel like stickers slapped onto the design.
+STEP 5 — FEATURE BADGES:
+Place the 3 auto-selected features as badges around the product. Each badge: bold rounded rectangle or explosive splat shape, thick 3–4px colored border, strong drop shadow, bold relevant icon + short bold uppercase text. Feel like stickers slapped onto a sports poster.
 
-${featureList}
+LAYOUT BY ASPECT RATIO — apply the one matching the requested output:
+- 1:1 (square): product perfectly centered, badges arranged around it (e.g. top-left, top-right, bottom-center).
+- 9:16 (portrait): title large at the top → product dominant in the center → 3 badges in a row below the product.
+- 16:9 (landscape): product on the right two-thirds → title + 3 badges stacked vertically on the left third.
 
-CRITICAL TEXT ACCURACY RULES (NON-NEGOTIABLE):
-- Copy EXACTLY what is given. Do not paraphrase, translate, summarize or "improve" any word.
-- Do not invent words. Do not add decorative text that was not requested.
-- Numbers must be copied exactly as provided.
-- Accents and special characters (á, é, í, ó, ú, ñ, ü) must be preserved exactly.
+ENERGY: Maximum visual intensity. Sports poster meets comic book cover. Bold, loud, impossible to scroll past.
 
-ENERGY: Maximum visual intensity. This should look like the most eye-catching product listing on the page. Bold, loud, impossible to ignore.`;
+CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
+- Copy title EXACTLY. Do not paraphrase, translate, summarize or add any word.
+- Numbers must be copied exactly. Preserve all accents (á, é, í, ó, ú, ñ, ü).
+- Do NOT invent decorative text that was not requested.
+
+PRODUCT FIDELITY (NON-NEGOTIABLE): Never invent accessories, change colors, alter proportions or add fake features to the product.`;
       } else {
-        const ar = extraData?.aspectRatio || "1:1";
+        prompt = `STEP 1 — PRODUCT ANALYSIS (automatic, internal):
+Analyze the product in the attached image to identify: (1) its category and main use, (2) target audience and purchase motivation, (3) the core problem it solves. Then automatically select the 3 characteristics with the highest visual and commercial impact — ones understandable in under 2 seconds, with high perceived value, that differentiate this product from average listings. These 3 selected features will appear in the feature panel.
+${featureLines.length > 0 ? `\nUSER-PROVIDED FEATURE CANDIDATES (use as input for your selection):\n${featureList}\n` : ""}
+STEP 2 — SCENE:
+Generate a real, photorealistic lifestyle scene — natural lighting, real textures, genuine depth of field. Choose a setting appropriate to this product (e.g. kitchen product → marble countertop with warm morning light; tech product → clean wooden desk by a window; beauty product → bathroom vanity with golden-hour glow; sports product → natural outdoor setting). NO solid color backgrounds. NO gradients. A REAL photographed-looking scene.
 
-        const layoutInstructions: Record<string, string> = {
-          "1:1": `LAYOUT — SQUARE (1:1):
-Divide the image into two equal vertical halves. LEFT HALF: clean dark or neutral-toned panel with the title in large bold uppercase sans-serif at the top, then the ${featureLines.length} feature items listed below it — each prefixed with a ✓ checkmark or shield icon, bold uppercase text, clear legible size. RIGHT HALF: the full lifestyle photo of the product in its real environment, filling this half edge to edge with a slight vignette.`,
-
-          "9:16": `LAYOUT — PORTRAIT (9:16):
-TOP SECTION (upper 20%): title text in large bold uppercase letters centered, high contrast against the background, white or light color with strong shadow.
-CENTER SECTION (middle 55%): the lifestyle photo fills this zone completely — product large and prominent in a real environment, realistic lighting, natural scene.
-BOTTOM SECTION (lower 25%): dark or semi-transparent bar overlaid on the photo. Inside it, list the ${featureLines.length} features in a clean horizontal or grid arrangement — each with a ✓ checkmark or shield icon, bold uppercase white text.`,
-
-          "16:9": `LAYOUT — LANDSCAPE (16:9):
-LEFT THIRD: bold typographic panel with a solid dark or deeply colored background (derived from the product's tones). Title in large bold uppercase at the top of this panel. Below it, list the ${featureLines.length} features vertically — each with a ✓ checkmark or shield icon, bold uppercase text, clean spacing.
-RIGHT TWO THIRDS: the lifestyle photo fills this zone completely — product prominently placed in a real, photorealistic environment with natural lighting, depth of field, warm professional photography.`,
-        };
-
-        prompt = `You are a professional catalog art director creating an ELEGANT magazine-style product ad. The image must look like a real professional catalog page or magazine advertisement — NOT a graphic design template.
-
-SCENE:
-Generate a real, photorealistic lifestyle scene appropriate for this product. Natural lighting, real textures, genuine depth of field. Examples: kitchen product → marble countertop with warm morning light; tech product → clean wooden desk by a window; beauty product → bathroom vanity with golden-hour glow; sports product → outdoor natural setting. NO solid color backgrounds. NO gradients. A REAL PHOTOGRAPHED SCENE.
-
-PRODUCT:
+STEP 3 — PRODUCT:
 Place the product from the attached image naturally in the scene as the undisputed hero. Maintain 100% visual fidelity — same shape, color, brand, materials. Realistic lighting, contact shadow, natural integration. It must look like it was physically present in that scene.
 
-${layoutInstructions[ar] || layoutInstructions["1:1"]}
-
-TEXT TO RENDER — TITLE: "${title}"
+STEP 4 — TITLE:
+Overlay this exact title in large, bold, uppercase, clean sans-serif directly on the image. High contrast against the background, with a strong but elegant shadow or subtle outline.
+TITLE: "${title}"
 Copy every character exactly. Do not add, remove or change any letter.
 
-FEATURES TO RENDER (${featureLines.length} items, each with ✓ or shield icon):
-${featureList}
+STEP 5 — FEATURE PANEL:
+Show the 3 auto-selected features grouped in a clean panel. Each feature: a ✓ checkmark or shield icon + short bold uppercase text. NO arrow lines or leader lines. The panel must feel like an editorial magazine sidebar — sophisticated, not cluttered.
 
-CRITICAL TEXT ACCURACY RULES (NON-NEGOTIABLE):
-- Copy EXACTLY what is given. Do not paraphrase, translate, summarize or "improve" any word.
-- Do not invent words. Do not add decorative text that was not requested.
-- Numbers must be copied exactly as provided.
-- Accents and special characters (á, é, í, ó, ú, ñ, ü) must be preserved exactly.
+LAYOUT BY ASPECT RATIO — apply the one matching the requested output:
+- 1:1 (square): split panel — LEFT HALF: dark/neutral panel with title at top + 3 features listed below with icons. RIGHT HALF: lifestyle photo filling edge to edge with a slight vignette.
+- 9:16 (portrait): title centered at the very top (upper 20%) → lifestyle photo dominant in the center (middle 55%) → dark or semi-transparent bar at the bottom (lower 25%) with 3 features in a horizontal row.
+- 16:9 (landscape): bold typographic panel on the left third (solid dark background, title at top + 3 features below with icons) → lifestyle photo fills the right two-thirds.
+
+MOOD: Aspirational, sophisticated, real. Premium catalog / editorial magazine quality.
+
+CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
+- Copy title EXACTLY. Do not paraphrase, translate, summarize or add any word.
+- Numbers must be copied exactly. Preserve all accents (á, é, í, ó, ú, ñ, ü).
 - NO arrow lines or leader lines. Use ✓ checkmark or shield icons only.
+- Do NOT invent decorative text that was not requested.
 
-MOOD: Aspirational, sophisticated, real. Professional catalog quality.`;
+PRODUCT FIDELITY (NON-NEGOTIABLE): Never invent accessories, change colors, alter proportions or add fake features to the product.`;
       }
       break;
     }
