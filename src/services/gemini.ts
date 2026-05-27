@@ -121,8 +121,8 @@ CRITICAL TEXT RULES:
 
       if (style === "Pop") {
         prompt = `STEP 1 — PRODUCT ANALYSIS (automatic, internal):
-Analyze the product in the attached image to identify: (1) its category and main use, (2) target audience and purchase motivation, (3) the core problem it solves. Then automatically select the 3 characteristics with the highest visual and commercial impact — ones understandable in under 2 seconds, with high perceived value, that differentiate this product from average listings. These 3 selected features will be shown as the badges in the design.
-${featureLines.length > 0 ? `\nUSER-PROVIDED FEATURE CANDIDATES (use as input for your selection):\n${featureList}\n` : ""}
+Analyze the product in the attached image to identify: (1) its category and main use, (2) target audience and purchase motivation, (3) the core problem it solves. Use this as context for the visual composition only.
+
 STEP 2 — BACKGROUND:
 Create an explosive radial burst / starburst background with sharp rays emanating from the center, filling the entire frame edge to edge. Extract 2–3 highly saturated colors directly from the product (e.g. if the product is red → bright red + yellow; if blue → electric blue + lime). High-contrast rays, no white backgrounds.
 
@@ -130,30 +130,32 @@ STEP 3 — PRODUCT:
 Place the product from the attached image as the central hero. Maintain 100% visual fidelity — same shape, color, brand, materials. The product must appear to "pop out" with a strong drop shadow or glow effect behind it.
 
 STEP 4 — TITLE:
-Render this exact title in MASSIVE, BOLD 3D lettering. Thick black outline (stroke), strong drop shadow, slight 3D extrusion effect. Heavy condensed sans-serif (Impact / Anton / Bebas Neue), all caps.
+Convert the title to ALL CAPS before rendering. Always render the title in uppercase, regardless of how it was typed.
+Render in MASSIVE, BOLD 3D lettering. Thick black outline (stroke), strong drop shadow, slight 3D extrusion effect. Heavy condensed sans-serif (Impact / Anton / Bebas Neue).
 TITLE: "${title}"
-Copy every character exactly. Do not add, remove or change any letter.
+Do not add, remove or change any word — only convert to uppercase.
 
 STEP 5 — FEATURE BADGES:
-Place the 3 auto-selected features as badges around the product. Each badge: bold rounded rectangle or explosive splat shape, thick 3–4px colored border, strong drop shadow, bold relevant icon + short bold uppercase text. Feel like stickers slapped onto a sports poster.
-
+Render ALL features listed below without exception. Do not select, filter or omit any of them. Every feature gets its own badge: bold rounded rectangle or explosive splat shape, thick 3–4px colored border, strong drop shadow, bold relevant icon + short bold uppercase text. Feel like stickers slapped onto a sports poster.
+${featureLines.length > 0 ? `\nFEATURES TO RENDER (ALL of them, no exceptions):\n${featureList}\n` : ""}
 LAYOUT BY ASPECT RATIO — apply the one matching the requested output:
 - 1:1 (square): product perfectly centered, badges arranged around it (e.g. top-left, top-right, bottom-center).
-- 9:16 (portrait): title large at the top → product dominant in the center → 3 badges in a row below the product.
-- 16:9 (landscape): product on the right two-thirds → title + 3 badges stacked vertically on the left third.
+- 9:16 (portrait): title large at the top → product dominant in the center → badges in a row below the product.
+- 16:9 (landscape): product on the right two-thirds → title + badges stacked vertically on the left third.
 
 ENERGY: Maximum visual intensity. Sports poster meets comic book cover. Bold, loud, impossible to scroll past.
 
 CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
-- Copy title EXACTLY. Do not paraphrase, translate, summarize or add any word.
+- Title: render every word exactly, converted to UPPERCASE.
+- Features: render ALL of them exactly as provided. Do not omit, merge or rewrite any.
 - Numbers must be copied exactly. Preserve all accents (á, é, í, ó, ú, ñ, ü).
 - Do NOT invent decorative text that was not requested.
 
 PRODUCT FIDELITY (NON-NEGOTIABLE): Never invent accessories, change colors, alter proportions or add fake features to the product.`;
       } else {
         prompt = `STEP 1 — PRODUCT ANALYSIS (automatic, internal):
-Analyze the product in the attached image to identify: (1) its category and main use, (2) target audience and purchase motivation, (3) the core problem it solves. Then automatically select the 3 characteristics with the highest visual and commercial impact — ones understandable in under 2 seconds, with high perceived value, that differentiate this product from average listings. These 3 selected features will be rendered as text directly on the photo.
-${featureLines.length > 0 ? `\nUSER-PROVIDED FEATURE CANDIDATES (use as input for your selection):\n${featureList}\n` : ""}
+Analyze the product in the attached image to identify: (1) its category and main use, (2) target audience and purchase motivation, (3) the core problem it solves. Use this as context for scene composition only — do NOT use it to filter or omit features.
+
 STEP 2 — SCENE:
 Generate a real, photorealistic lifestyle scene that fills the ENTIRE image edge to edge — natural lighting, real textures, genuine depth of field. Choose a setting appropriate to this product (e.g. kitchen product → marble countertop with warm morning light; tech product → clean wooden desk by a window; beauty product → bathroom vanity with golden-hour glow; sports product → natural outdoor setting). NO solid color backgrounds. NO gradients. A REAL photographed-looking scene. The photo has NO panels, NO color blocks, NO overlays, NO semi-transparent layers of any kind.
 
@@ -161,24 +163,26 @@ STEP 3 — PRODUCT:
 Place the product from the attached image naturally in the scene as the undisputed hero. Maintain 100% visual fidelity — same shape, color, brand, materials. Realistic lighting, contact shadow, natural integration. It must look like it was physically present in that scene.
 
 STEP 4 — TITLE:
-Float this exact title directly over the photo in large, bold, uppercase, clean sans-serif. White text with a strong drop shadow for readability. NO background, NO box, NO pill, NO color block behind the text — the text sits directly on the photo like a magazine cover.
+Convert the title to ALL CAPS before rendering. Always render the title in uppercase, regardless of how it was typed.
+Float the title directly over the photo in large, bold, uppercase, clean sans-serif. Pure white text (#FFFFFF) with a strong multi-layer drop shadow ONLY (e.g. 2px solid black shadow + 4px soft black shadow). NO background behind the title — no box, no rounded rectangle, no pill shape, no color block, no semi-transparent layer. The text sits directly on the photo with shadow as the only readability aid, like a magazine cover.
 TITLE: "${title}"
-Copy every character exactly. Do not add, remove or change any letter.
+Do not add, remove or change any word — only convert to uppercase.
 
 STEP 5 — FEATURES:
-Float the 3 auto-selected features directly over the photo. Each feature: a ✓ checkmark or shield icon + short bold uppercase white text with strong drop shadow. NO background behind the text, NO panels, NO bordered boxes, NO arrow lines. Text floats over the photo exactly like a magazine cover headline.
-
+Render ALL features listed below without exception. Do not select, filter or omit any of them. Float each feature directly over the photo: a ✓ checkmark or shield icon + short bold uppercase white text with strong drop shadow. NO background behind the text, NO panels, NO bordered boxes, NO arrow lines. Text floats over the photo exactly like a magazine cover headline.
+${featureLines.length > 0 ? `\nFEATURES TO RENDER (ALL of them, no exceptions):\n${featureList}\n` : ""}
 LAYOUT BY ASPECT RATIO — apply the one matching the requested output:
-- 1:1 (square): title large at the top of the photo → product centered → 3 features at the bottom, spaced horizontally.
-- 9:16 (portrait): title at the top of the photo → product large and centered → 3 features in a horizontal row near the bottom.
-- 16:9 (landscape): title + 3 features stacked vertically on the left side of the photo → product prominent on the right.
+- 1:1 (square): title large at the top of the photo → product centered → features at the bottom, spaced horizontally.
+- 9:16 (portrait): title at the top of the photo → product large and centered → features in a horizontal row near the bottom.
+- 16:9 (landscape): title + features stacked vertically on the left side of the photo → product prominent on the right.
 
-TYPOGRAPHY RULE: Every character of text — title and features — is rendered in pure white (#FFFFFF), bold weight, clean sans-serif, with a strong multi-layer drop shadow (e.g. 2px black shadow + 4px soft black shadow) to ensure legibility over any background. This is the ONLY technique allowed for text readability. No backgrounds of any kind.
+TYPOGRAPHY RULE: Every character of text — title and features — is rendered in pure white (#FFFFFF), bold weight, clean sans-serif, with a strong multi-layer drop shadow. This is the ONLY technique allowed for text readability. No backgrounds, boxes or overlays of any kind behind any text.
 
 MOOD: Aspirational, sophisticated. Premium editorial magazine cover — full-bleed photo, text floating on top.
 
 CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
-- Copy title EXACTLY. Do not paraphrase, translate, summarize or add any word.
+- Title: render every word exactly, converted to UPPERCASE. No background behind it.
+- Features: render ALL of them exactly as provided. Do not omit, merge or rewrite any.
 - Numbers must be copied exactly. Preserve all accents (á, é, í, ó, ú, ñ, ü).
 - NO arrow lines or leader lines. Use ✓ checkmark or shield icons only.
 - Do NOT invent decorative text that was not requested.
