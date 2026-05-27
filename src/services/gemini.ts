@@ -226,10 +226,13 @@ ${infoScenario ? `Use this specific scene: "${infoScenario}"` : "Choose the most
 
 TEXT OVERLAY (render directly on the photo):
 - TOP of image: Title "${title}" in large bold uppercase sans-serif, dark color or white with drop shadow — choose whichever contrasts better with the background. NO background box behind text.
+- CRITICAL: The title must be FULLY VISIBLE and NEVER cut off. Leave sufficient padding/margin from the top and side edges so every character of the title is completely readable within the image bounds.
 - Thin accent line below the title (1-2px, color derived from product)
 - Features listed below or beside, ALL of them, no omissions:
 ${featureLines.length > 0 ? featureList : "(no features provided)"}
-Each feature: bold label + optional short description. Clean icons. Separated by thin lines.
+Each feature: bold UPPERCASE label + optional short description. Clean icons. Separated by thin lines.
+- ALL feature text must be in UPPERCASE bold — no lowercase anywhere in the feature list.
+- ALL features provided above must be shown without exception. If there are many features, reduce font size or adjust layout to fit every single one — never omit any.
 
 STYLE RULES:
 - Hyperrealistic photography — not CGI, not illustration
