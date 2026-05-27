@@ -732,20 +732,32 @@ export default function App() {
         ))}
       </div>
     );
-    if (selectedStyle === "Infographic") return (  // BUGFIX: bloque único, sin duplicado
-      <div className="space-y-2">
-        <Input placeholder="Título" value={item.infoTitle || ""} onChange={e => upd({ infoTitle: e.target.value })}
-          className={cn("h-8 text-[10px] bg-black/40 border-white/5", !item.infoTitle?.trim() && "border-red-500/50")} />
-        <Textarea placeholder={"Característica 1\nCaracterística 2"} value={item.infoFeatures || ""}
-          onChange={e => upd({ infoFeatures: e.target.value })}
-          className={cn("h-16 text-[10px] bg-black/40 border-white/5", !item.infoFeatures?.trim() && "border-red-500/50")} />
-        {(item.infoStyle || infoStyle) === "Elegante" && (
-          <Input placeholder="Escenario (Opcional)" value={item.infoScenario || ""}
-            onChange={e => upd({ infoScenario: e.target.value })}
-            className="h-8 text-[10px] bg-black/40 border-white/5" />
-        )}
-      </div>
-    );
+    if (selectedStyle === "Infographic") {
+      const itemStyle = item.infoStyle || "Pop";
+      return (
+        <div className="space-y-2">
+          <div className="grid grid-cols-2 gap-1.5">
+            {(["Pop", "Elegante"] as const).map(s => (
+              <Button key={s} onClick={() => upd({ infoStyle: s })} size="sm"
+                className={cn("h-7 text-[9px] font-black uppercase tracking-widest border",
+                  itemStyle === s ? "bg-white text-black border-white" : "bg-transparent text-white/60 border-white/10 hover:bg-white/10")}>
+                {s === "Pop" ? "Pop 🎨" : "Elegante ✨"}
+              </Button>
+            ))}
+          </div>
+          <Input placeholder="Título" value={item.infoTitle || ""} onChange={e => upd({ infoTitle: e.target.value })}
+            className={cn("h-8 text-[10px] bg-black/40 border-white/5", !item.infoTitle?.trim() && "border-red-500/50")} />
+          <Textarea placeholder={"Característica 1\nCaracterística 2"} value={item.infoFeatures || ""}
+            onChange={e => upd({ infoFeatures: e.target.value })}
+            className={cn("h-16 text-[10px] bg-black/40 border-white/5", !item.infoFeatures?.trim() && "border-red-500/50")} />
+          {itemStyle === "Elegante" && (
+            <Input placeholder="Escenario (Opcional)" value={item.infoScenario || ""}
+              onChange={e => upd({ infoScenario: e.target.value })}
+              className="h-8 text-[10px] bg-black/40 border-white/5" />
+          )}
+        </div>
+      );
+    }
     return null;
   };
 
