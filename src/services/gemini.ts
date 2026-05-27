@@ -184,6 +184,7 @@ async function generateInfographic(
 ): Promise<string> {
   const title = extraData?.title || "";
   const features = (extraData?.features as string) || "";
+  const infoStyle = extraData?.infoStyle || "Pop";
   const ar = (extraData?.aspectRatio as string) || "1:1";
 
   const featureLines = features
@@ -201,7 +202,62 @@ async function generateInfographic(
     "16:9": "HORIZONTAL/LANDSCAPE FORMAT (16:9) — wide horizontal banner. Design for a wide screen with horizontal composition, product on one side and text on the other",
   };
 
-  const prompt = `GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT. ${arDescriptions[ar] || ar}. This is the most critical requirement — design everything for this ratio from the start.
+  let prompt = "";
+
+  if (infoStyle === "Elegante") {
+    prompt = `GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT. ${arDescriptions[ar] || ar}. Design everything for this ratio from the start — this is non-negotiable.
+
+You are a world-class lifestyle photographer and art director specializing in premium e-commerce for MercadoLibre. Your goal: create a high-converting, aspirational infographic where the product is shown IN USE in a real scene.
+
+STEP 1 — PRODUCT IN USE (CORE REQUIREMENT):
+The product must not merely sit in an environment — it must be actively in use or being interacted with. Show it in a real, believable moment of use:
+- Kitchen appliance → someone using it to cook, pour, blend — hands visible, steam, food present
+- Tech product → in someone's hands, on a desk being used, screen lit up with relevant content
+- Beauty/personal care → being applied, held, used in a bathroom or vanity scene
+- Sports/outdoor → in motion, being worn or used during activity, dynamic energy
+- Apparel/accessories → worn on a real person in a natural moment, not posed
+- Home product → integrated into a lived-in, real interior scene with people or signs of life
+The scene must feel like a real photograph taken in a real moment — not a staged product shot.
+
+STEP 2 — SCENE AND COMPOSITION (YOU DECIDE FREELY):
+Choose the composition that best showcases the product in use for its specific category. You are completely free:
+- Crop: tight on the action, wide establishing shot, medium portrait — whatever shows the use best
+- Angle: eye-level, over-the-shoulder, first-person POV, slight high angle — choose the most cinematic
+- Lighting: natural window light, warm golden hour, cool studio, dramatic side light — match the mood of the product
+- Setting: real location that fits the product's world — a real kitchen, a real gym, a real desk, outdoors, a real bathroom
+- Color palette: warm, cool, neutral or bold — derive from the product and scene, not arbitrary
+
+STEP 3 — MANDATORY TEXT ELEMENTS:
+TITLE: "${title}"
+- Render in ALL CAPS, exactly as written (no word changes, no additions, no omissions — only uppercase conversion)
+- Overlay it directly on the image in a position where it reads clearly against the scene
+- Use bold, clean sans-serif — large enough to dominate the composition
+- Readability technique: strong multi-layer drop shadow, OR a subtle semi-transparent dark/light panel behind the text ONLY if needed for contrast. Choose what looks most premium.
+
+FEATURES — render ALL of the following without exception. Do not select, filter, merge or omit any:
+${featureLines.length > 0 ? `${featureList}` : "(no features provided)"}
+- Float each feature over the image: ✓ checkmark or relevant icon + bold uppercase text
+- Ensure every feature is clearly legible — use drop shadow or a minimal subtle panel for contrast if needed
+- Distribute them naturally across the composition; do not stack them all in one corner
+
+STEP 4 — VISUAL QUALITY:
+- Hyperrealistic photography quality — not illustrated, not 3D render, not flat design
+- Product rendered with 100% fidelity to the attached reference image (same shape, colors, brand, materials, proportions)
+- Typography: premium, modern, bold — no generic or default fonts
+- Overall mood: aspirational, premium, trustworthy — the kind of image that makes someone stop scrolling
+- High contrast between text and background at all times — legibility is mandatory
+
+STEP 5 — CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
+- Title: render every word exactly as given, in ALL CAPS. Do not change, add or remove any word.
+- Features: ALL of them rendered exactly as provided. Do not omit, merge, paraphrase or rewrite any.
+- Copy every number exactly (do not round or alter).
+- Preserve all Spanish accents and special characters (á, é, í, ó, ú, ñ, ü).
+- Do NOT invent any text that was not explicitly provided.
+
+PRODUCT FIDELITY (NON-NEGOTIABLE):
+The product must be 100% faithful to the attached reference photo — same exact shape, colors, brand markings, materials and proportions. Do not redesign, reimagine or alter it in any way.`;
+  } else {
+    prompt = `GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT. ${arDescriptions[ar] || ar}. This is the most critical requirement — design everything for this ratio from the start.
 
 You are an expert in e-commerce, visual neuromarketing and conversion optimization for MercadoLibre. Your mission: create the most effective product infographic possible to maximize clicks, trust and conversions.
 
@@ -248,6 +304,7 @@ STEP 5 — CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
 
 PRODUCT FIDELITY (NON-NEGOTIABLE):
 The product in the final image must be 100% faithful to the attached reference photo — same exact shape, colors, brand markings, materials and proportions. Do not redesign, reimagine or alter the product in any way.`;
+  }
 
 
   const sizeMap: Record<string, string> = {
