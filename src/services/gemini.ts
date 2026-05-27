@@ -257,6 +257,8 @@ CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
     body: JSON.stringify({
       prompt,
       size: sizeMap[ar] || "1024x1024",
+      image: base64Image,
+      mimeType,
     }),
   });
 

@@ -149,25 +149,25 @@ app.post("/api/generate-infographic", async (req, res) => {
     return res.status(500).json({ error: "OPENAI_API_KEY not configured on server" });
   }
 
-  const { prompt, size } = req.body;
-  if (!prompt) {
-    return res.status(400).json({ error: "prompt is required" });
-  }
+  const { prompt, size, image, mimeType } = req.body;
+  if (!prompt) return res.status(400).json({ error: "prompt is required" });
+  if (!image)  return res.status(400).json({ error: "image is required" });
 
   try {
-    const openaiRes = await fetch("https://api.openai.com/v1/images/generations", {
+    const imageBuffer = Buffer.from(image, "base64");
+    const imageFile = new File([imageBuffer], "image.png", { type: mimeType || "image/png" });
+
+    const formData = new FormData();
+    formData.append("model",  "gpt-image-1");
+    formData.append("prompt", prompt);
+    formData.append("size",   size || "1024x1024");
+    formData.append("n",      "1");
+    formData.append("image",  imageFile, "image.png");
+
+    const openaiRes = await fetch("https://api.openai.com/v1/images/edits", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "gpt-image-1",
-        prompt,
-        n: 1,
-        size: size || "1024x1024",
-        response_format: "b64_json",
-      }),
+      headers: { "Authorization": `Bearer ${apiKey}` },
+      body: formData,
     });
 
     if (!openaiRes.ok) {
