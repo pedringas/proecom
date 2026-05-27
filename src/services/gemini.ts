@@ -1,5 +1,3 @@
-import { GoogleGenAI, VideoGenerationReferenceImage, VideoGenerationReferenceType } from "@google/genai";
-
 export interface TransformationResult {
   imageUrl: string;
 }
@@ -20,10 +18,8 @@ export async function transformImage(
     productDescription?: string;
     aspectRatio?: "1:1" | "16:9" | "9:16";
     infoStyle?: "Pop" | "Elegante";
-  },
-  apiKey?: string
+  }
 ): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: apiKey || process.env.GEMINI_API_KEY || "" });
   let prompt = "";
 
   switch (style) {
@@ -122,34 +118,30 @@ CRITICAL TEXT RULES:
   };
   prompt += `\n\nMANDATORY FINAL REQUIREMENT — OUTPUT ASPECT RATIO: You MUST generate the image in ${arDesc[ar] || ar} aspect ratio. This is non-negotiable. Every element — product, background, badges, title — must be composed and cropped to fit exactly within this ratio. Do NOT output a square image if a different ratio is requested.`;
 
-  const response = await ai.models.generateContent({
-    model: "gemini-2.5-flash-image",
-    contents: {
+  const response = await fetch("/api/gemini", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: "image",
       parts: [
-        {
-          inlineData: {
-            data: base64Image,
-            mimeType: mimeType,
-          },
-        },
-        {
-          text: prompt,
-        },
+        { inlineData: { data: base64Image, mimeType } },
+        { text: prompt },
       ],
-    },
-    config: {
-      responseModalities: ["IMAGE"],
-      aspectRatio: extraData?.aspectRatio || "1:1",
-    },
+      config: {
+        responseModalities: ["IMAGE"],
+        aspectRatio: extraData?.aspectRatio || "1:1",
+      },
+    }),
   });
 
-  for (const part of response.candidates?.[0]?.content?.parts || []) {
-    if (part.inlineData) {
-      return `data:image/png;base64,${part.inlineData.data}`;
-    }
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Gemini API error ${response.status}: ${err}`);
   }
 
-  throw new Error("No image was returned by the API.");
+  const data = await response.json() as { imageData?: string };
+  if (!data.imageData) throw new Error("No image was returned by the API.");
+  return `data:image/png;base64,${data.imageData}`;
 }
 
 // ─── INFOGRAFÍA VIA GPT-IMAGE-1 ──────────────────────────────────────────────
@@ -276,31 +268,19 @@ CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
 // ─── ANALYZE PRODUCT (para Video 360°) ───────────────────────────────────────
 export async function analyzeProduct(
   images: { base64: string; mimeType: string }[],
-  userDescription?: string,
-  apiKey?: string
+  userDescription?: string
 ): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: apiKey || process.env.GEMINI_API_KEY || "" });
+  const parts = [
+    ...images.map((img) => ({
+      inlineData: { data: img.base64, mimeType: img.mimeType },
+    })),
+    {
+      text: `Analyze these images of the same product taken from different angles. ${
+        userDescription
+          ? `The user describes the product as: "${userDescription}".`
+          : ""
+      }
 
-  const parts = images.map((img) => ({
-    inlineData: {
-      data: img.base64,
-      mimeType: img.mimeType,
-    },
-  }));
-
-  const response = await ai.models.generateContent({
-    // BUGFIX: modelo corregido (era "gemini-3-flash-preview" — no existe)
-    model: "gemini-2.5-flash-image",
-    contents: {
-      parts: [
-        ...parts,
-        {
-          text: `Analyze these images of the same product taken from different angles. ${
-            userDescription
-              ? `The user describes the product as: "${userDescription}".`
-              : ""
-          }
-          
 Provide an extremely detailed and precise technical description of the product, including:
 - Overall shape and silhouette
 - Materials and textures (matte, glossy, fabric, metal, plastic, etc.)
@@ -310,69 +290,40 @@ Provide an extremely detailed and precise technical description of the product, 
 - Approximate proportions
 
 This description will be used to generate a 360° product video, so be very thorough so the AI can reconstruct it faithfully.`,
-        },
-      ],
     },
+  ];
+
+  const response = await fetch("/api/gemini", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ type: "text", parts }),
   });
 
-  return response.text || "A high-quality commercial product.";
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Gemini API error ${response.status}: ${err}`);
+  }
+
+  const data = await response.json() as { text?: string };
+  return data.text || "A high-quality commercial product.";
 }
 
 // ─── GENERATE VIDEO 360° ─────────────────────────────────────────────────────
 export async function generateVideo360(
-  apiKey: string,
   description: string,
   images: { base64: string; mimeType: string }[]
 ): Promise<string> {
-  const aiInstance = new GoogleGenAI({ apiKey: apiKey || process.env.API_KEY || "" });
-
-  const referenceImagesPayload: VideoGenerationReferenceImage[] = images
-    .slice(0, 3)
-    .map((img) => ({
-      image: {
-        imageBytes: img.base64,
-        mimeType: img.mimeType,
-      },
-      referenceType: VideoGenerationReferenceType.ASSET,
-    }));
-
-  const videoPrompt = `Cinematic 360-degree product rotation video using the provided processed images as absolute visual references.
-The product performs a slow, elegant, and smooth full rotation in a clockwise direction.
-The camera angle is an orbital perspective with a slight high-angle tilt, looking slightly down at the product to showcase its top and sides.
-The environment must remain a consistent, pure infinite white background (RGB 255,255,255) with soft studio lighting and realistic contact shadows at the base.
-Maintain 100% visual fidelity to the product's shape, textures, and colors seen in the reference images.
-The motion must be fluid and steady, completing one full revolution in exactly 6 seconds.
-The final frame must perfectly match the first frame to create a seamless, infinite loop.
-High resolution, professional ecommerce commercial style.
-Technical description context: ${description}`;
-
-  let operation = await aiInstance.models.generateVideos({
-    model: "veo-3.1-generate-preview",
-    prompt: videoPrompt,
-    config: {
-      numberOfVideos: 1,
-      referenceImages: referenceImagesPayload,
-      resolution: "720p",
-      aspectRatio: "16:9",
-    },
+  const response = await fetch("/api/gemini-video", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ description, images }),
   });
 
-  while (!operation.done) {
-    await new Promise((resolve) => setTimeout(resolve, 10000));
-    operation = await aiInstance.operations.getVideosOperation({
-      operation: operation,
-    });
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Video generation error ${response.status}: ${err}`);
   }
 
-  const downloadLink =
-    operation.response?.generatedVideos?.[0]?.video?.uri;
-  if (!downloadLink) {
-    console.error(
-      "Video generation failed. Operation details:",
-      JSON.stringify(operation, null, 2)
-    );
-    throw new Error("Could not get video download link.");
-  }
-
-  return downloadLink;
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
 }

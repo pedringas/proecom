@@ -248,11 +248,8 @@ export default function App() {
 
   const isEmbed = new URLSearchParams(window.location.search).get("embed") === "true";
 
-  // Auth / API key
+  // Auth
   const [isGoogleAuth, setIsGoogleAuth] = useState(false);
-  const [hasApiKey, setHasApiKey]       = useState(false);
-  const [userApiKey, setUserApiKey]     = useState(() => localStorage.getItem("gemini_api_key") || "");
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
 
   // Refs
   const fileInputRef        = useRef<HTMLInputElement>(null);
@@ -285,17 +282,6 @@ export default function App() {
   // ── Auth check ─────────────────────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/auth/status").then(r => r.json()).then(d => setIsGoogleAuth(d.isAuthenticated)).catch(() => {});
-
-    const checkKey = async () => {
-      // @ts-ignore
-      if (window.aistudio?.hasSelectedApiKey) {
-        // @ts-ignore
-        setHasApiKey(await window.aistudio.hasSelectedApiKey());
-      } else {
-        setHasApiKey(!!localStorage.getItem("gemini_api_key"));
-      }
-    };
-    checkKey();
 
     const onMsg = (e: MessageEvent) => {
       if (e.data?.type === "OAUTH_AUTH_SUCCESS") { setIsGoogleAuth(true); toast.success("Conectado a Google Drive"); }
@@ -351,20 +337,6 @@ export default function App() {
     return () => window.removeEventListener("paste", handlePaste);
   }, [handlePaste]);
 
-  // ── API key guard ─────────────────────────────────────────────────────────
-  const ensureApiKey = async (): Promise<boolean> => {
-    // @ts-ignore
-    if (window.aistudio?.hasSelectedApiKey) {
-      // @ts-ignore
-      const ok = await window.aistudio.hasSelectedApiKey();
-      if (!ok) { // @ts-ignore
-        await window.aistudio.openSelectKey(); setHasApiKey(true); return false;
-      }
-      return true;
-    }
-    if (!userApiKey) { setShowApiKeyModal(true); return false; }
-    return true;
-  };
 
   // ── File processing ───────────────────────────────────────────────────────
   const processFile = async (file: File) => {
@@ -439,7 +411,7 @@ export default function App() {
 
   // ── Single transform ──────────────────────────────────────────────────────
   const handleTransform = async () => {
-    if (!image || !(await ensureApiKey())) return;
+    if (!image) return;
     setIsProcessing(true);
     try {
       const raw = await transformImage(image.split(",")[1], mimeType, selectedStyle, "", {
@@ -447,7 +419,7 @@ export default function App() {
         title: infoTitle, features: infoFeatures,
         lifestylePrompt, productDescription, aspectRatio: imageAspectRatio,
         infoStyle
-      }, userApiKey);
+      });
       const url = await fitToAspectRatio(raw, imageAspectRatio);
       setResult(url);
       addToHistory(image, url, selectedStyle, originalFileName);
@@ -471,7 +443,7 @@ export default function App() {
 
   // ── Batch run ─────────────────────────────────────────────────────────────
   const runBatch = async () => {
-    if (!batchItems.length || !isFormValid() || !(await ensureApiKey())) return;
+    if (!batchItems.length || !isFormValid()) return;
     setIsProcessing(true);
     batchStartTime.current = Date.now();
     let done = 0;
@@ -488,7 +460,7 @@ export default function App() {
           productDescription: item.productDescription || productDescription,
           aspectRatio: item.aspectRatio || imageAspectRatio,
           infoStyle: item.infoStyle || infoStyle
-        }, userApiKey));
+        }));
         const url  = await fitToAspectRatio(raw, item.aspectRatio || imageAspectRatio);
         setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "completed", result: url } : it));
         addToHistory(`data:image/jpeg;base64,${b64}`, url, selectedStyle, item.file.name);
@@ -505,22 +477,21 @@ export default function App() {
 
   // ── Video 360 ─────────────────────────────────────────────────────────────
   const handleGenerateVideo360 = async () => {
-    if (!Object.values(video360Angles).some(Boolean) || !(await ensureApiKey())) return;
+    if (!Object.values(video360Angles).some(Boolean)) return;
     setIsProcessing(true); setBatchProgress(0); setVideo360Result(null);
     try {
       const ordered = [video360Angles.frente, video360Angles.lateral1, video360Angles.dorso, video360Angles.lateral2].filter(Boolean) as BatchItem[];
       const processed: { base64: string; mimeType: string }[] = [];
       for (const item of ordered) {
         const b64 = item.preview.split(",")[1];
-        const url = await transformImage(b64, "image/jpeg", "Ecom", "", { productDescription }, userApiKey);
+        const url = await transformImage(b64, "image/jpeg", "Ecom", "", { productDescription });
         processed.push({ base64: url.split(",")[1], mimeType: "image/png" });
         setBatchProgress(processed.length / (ordered.length + 2) * 100);
       }
-      const desc = await analyzeProduct(processed, productDescription, userApiKey);
+      const desc = await analyzeProduct(processed, productDescription);
       setBatchProgress(80);
-      const videoUri = await generateVideo360(userApiKey, desc, processed);
-      const blob = await (await fetch(videoUri, { headers: { "x-goog-api-key": userApiKey } })).blob();
-      setVideo360Result(URL.createObjectURL(blob));
+      const videoObjectUrl = await generateVideo360(desc, processed);
+      setVideo360Result(videoObjectUrl);
       toast.success("¡Video 360° generado con éxito!");
       setBatchProgress(100);
     } catch (e) {
@@ -1248,35 +1219,6 @@ export default function App() {
                       onClick={() => downloadUrl(selectedHistoryItem.result, getFormattedFileName(selectedHistoryItem.fileName || "result", selectedHistoryItem.style))}>
                       Descargar HD
                     </Button>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        {/* ── API Key modal ── */}
-        <AnimatePresence>
-          {showApiKeyModal && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/95 backdrop-blur-xl">
-              <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative max-w-md w-full bg-zinc-900 rounded-3xl border border-white/10 shadow-2xl p-8 space-y-6">
-                <div className="space-y-2 text-center">
-                  <h2 className="text-xl font-bold text-white">Configurar API Key</h2>
-                  <p className="text-xs text-white/50">Ingresá tu clave de API de Gemini (Google AI Studio) para usar la app fuera de AI Studio.</p>
-                </div>
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-white/70">API Key de Gemini</Label>
-                    <Input type="password" placeholder="AIzaSy..." value={userApiKey} onChange={e => setUserApiKey(e.target.value)} className="bg-black/50 border-white/10 text-white" />
-                  </div>
-                  <div className="flex gap-3 pt-4">
-                    <Button variant="outline" className="flex-1 border-white/10 text-white hover:bg-white/5" onClick={() => setShowApiKeyModal(false)}>Cancelar</Button>
-                    <Button className="flex-1 bg-brand-violet text-black hover:bg-white" onClick={() => {
-                      if (userApiKey.trim()) { localStorage.setItem("gemini_api_key", userApiKey.trim()); setHasApiKey(true); setShowApiKeyModal(false); toast.success("API Key guardada"); }
-                      else toast.error("Por favor ingresá una clave válida");
-                    }}>Guardar</Button>
                   </div>
                 </div>
               </motion.div>
