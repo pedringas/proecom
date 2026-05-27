@@ -106,90 +106,7 @@ CRITICAL TEXT RULES:
 
     // ─── 5. INFOGRAFÍA ───────────────────────────────────────────────────────
     case "Infographic": {
-      const title = extraData?.title || "";
-      const features = extraData?.features || "";
-      const style = extraData?.infoStyle || "Pop";
-
-      const featureLines = features
-        .split("\n")
-        .map(f => f.trim())
-        .filter(f => f.length > 0);
-
-      const featureList = featureLines
-        .map((f, i) => `Feature ${i + 1}: "${f}"`)
-        .join("\n");
-
-      if (style === "Pop") {
-        prompt = `STEP 1 — PRODUCT ANALYSIS (automatic, internal):
-Analyze the product in the attached image to identify: (1) its category and main use, (2) target audience and purchase motivation, (3) the core problem it solves. Use this as context for the visual composition only.
-
-STEP 2 — BACKGROUND:
-Create an explosive radial burst / starburst background with sharp rays emanating from the center, filling the entire frame edge to edge. Extract 2–3 highly saturated colors directly from the product (e.g. if the product is red → bright red + yellow; if blue → electric blue + lime). High-contrast rays, no white backgrounds.
-
-STEP 3 — PRODUCT:
-Place the product from the attached image as the central hero. Maintain 100% visual fidelity — same shape, color, brand, materials. The product must appear to "pop out" with a strong drop shadow or glow effect behind it.
-
-STEP 4 — TITLE:
-Convert the title to ALL CAPS before rendering. Always render the title in uppercase, regardless of how it was typed.
-Render in MASSIVE, BOLD 3D lettering. Thick black outline (stroke), strong drop shadow, slight 3D extrusion effect. Heavy condensed sans-serif (Impact / Anton / Bebas Neue).
-TITLE: "${title}"
-Do not add, remove or change any word — only convert to uppercase.
-
-STEP 5 — FEATURE BADGES:
-Render ALL features listed below without exception. Do not select, filter or omit any of them. Every feature gets its own badge: bold rounded rectangle or explosive splat shape, thick 3–4px colored border, strong drop shadow, bold relevant icon + short bold uppercase text. Feel like stickers slapped onto a sports poster.
-${featureLines.length > 0 ? `\nFEATURES TO RENDER (ALL of them, no exceptions):\n${featureList}\n` : ""}
-LAYOUT BY ASPECT RATIO — apply the one matching the requested output:
-- 1:1 (square): product perfectly centered, badges arranged around it (e.g. top-left, top-right, bottom-center).
-- 9:16 (portrait): title large at the top → product dominant in the center → badges in a row below the product.
-- 16:9 (landscape): product on the right two-thirds → title + badges stacked vertically on the left third.
-
-ENERGY: Maximum visual intensity. Sports poster meets comic book cover. Bold, loud, impossible to scroll past.
-
-CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
-- Title: render every word exactly, converted to UPPERCASE.
-- Features: render ALL of them exactly as provided. Do not omit, merge or rewrite any.
-- Numbers must be copied exactly. Preserve all accents (á, é, í, ó, ú, ñ, ü).
-- Do NOT invent decorative text that was not requested.
-
-PRODUCT FIDELITY (NON-NEGOTIABLE): Never invent accessories, change colors, alter proportions or add fake features to the product.`;
-      } else {
-        prompt = `STEP 1 — PRODUCT ANALYSIS (automatic, internal):
-Analyze the product in the attached image to identify: (1) its category and main use, (2) target audience and purchase motivation, (3) the core problem it solves. Use this as context for scene composition only — do NOT use it to filter or omit features.
-
-STEP 2 — SCENE:
-Generate a real, photorealistic lifestyle scene that fills the ENTIRE image edge to edge — natural lighting, real textures, genuine depth of field. Choose a setting appropriate to this product (e.g. kitchen product → marble countertop with warm morning light; tech product → clean wooden desk by a window; beauty product → bathroom vanity with golden-hour glow; sports product → natural outdoor setting). NO solid color backgrounds. NO gradients. A REAL photographed-looking scene. The photo has NO panels, NO color blocks, NO overlays, NO semi-transparent layers of any kind.
-
-STEP 3 — PRODUCT:
-Place the product from the attached image naturally in the scene as the undisputed hero. Maintain 100% visual fidelity — same shape, color, brand, materials. Realistic lighting, contact shadow, natural integration. It must look like it was physically present in that scene.
-
-STEP 4 — TITLE:
-Convert the title to ALL CAPS before rendering. Always render the title in uppercase, regardless of how it was typed.
-Float the title directly over the photo in large, bold, uppercase, clean sans-serif. Pure white text (#FFFFFF) with a strong multi-layer drop shadow ONLY (e.g. 2px solid black shadow + 4px soft black shadow). NO background behind the title — no box, no rounded rectangle, no pill shape, no color block, no semi-transparent layer. The text sits directly on the photo with shadow as the only readability aid, like a magazine cover.
-TITLE: "${title}"
-Do not add, remove or change any word — only convert to uppercase.
-
-STEP 5 — FEATURES:
-Render ALL features listed below without exception. Do not select, filter or omit any of them. Float each feature directly over the photo: a ✓ checkmark or shield icon + short bold uppercase white text with strong drop shadow. NO background behind the text, NO panels, NO bordered boxes, NO arrow lines. Text floats over the photo exactly like a magazine cover headline.
-${featureLines.length > 0 ? `\nFEATURES TO RENDER (ALL of them, no exceptions):\n${featureList}\n` : ""}
-LAYOUT BY ASPECT RATIO — apply the one matching the requested output:
-- 1:1 (square): title large at the top of the photo → product centered → features at the bottom, spaced horizontally.
-- 9:16 (portrait): title at the top of the photo → product large and centered → features in a horizontal row near the bottom.
-- 16:9 (landscape): title + features stacked vertically on the left side of the photo → product prominent on the right.
-
-TYPOGRAPHY RULE: Every character of text — title and features — is rendered in pure white (#FFFFFF), bold weight, clean sans-serif, with a strong multi-layer drop shadow. This is the ONLY technique allowed for text readability. No backgrounds, boxes or overlays of any kind behind any text.
-
-MOOD: Aspirational, sophisticated. Premium editorial magazine cover — full-bleed photo, text floating on top.
-
-CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
-- Title: render every word exactly, converted to UPPERCASE. No background behind it.
-- Features: render ALL of them exactly as provided. Do not omit, merge or rewrite any.
-- Numbers must be copied exactly. Preserve all accents (á, é, í, ó, ú, ñ, ü).
-- NO arrow lines or leader lines. Use ✓ checkmark or shield icons only.
-- Do NOT invent decorative text that was not requested.
-
-PRODUCT FIDELITY (NON-NEGOTIABLE): Never invent accessories, change colors, alter proportions or add fake features to the product.`;
-      }
-      break;
+      return await generateInfographic(base64Image, mimeType, extraData, apiKey);
     }
 
     default:
@@ -233,6 +150,132 @@ PRODUCT FIDELITY (NON-NEGOTIABLE): Never invent accessories, change colors, alte
   }
 
   throw new Error("No image was returned by the API.");
+}
+
+// ─── INFOGRAFÍA VIA GPT-IMAGE-1 ──────────────────────────────────────────────
+async function generateInfographic(
+  base64Image: string,
+  mimeType: string,
+  extraData?: {
+    title?: string;
+    features?: string;
+    aspectRatio?: "1:1" | "16:9" | "9:16";
+    infoStyle?: "Pop" | "Elegante";
+    [key: string]: unknown;
+  },
+  apiKey?: string
+): Promise<string> {
+  const title = extraData?.title || "";
+  const features = (extraData?.features as string) || "";
+  const infoStyle = extraData?.infoStyle || "Pop";
+  const ar = (extraData?.aspectRatio as string) || "1:1";
+
+  const featureLines = features
+    .split("\n")
+    .map((f: string) => f.trim())
+    .filter((f: string) => f.length > 0);
+
+  const featureList = featureLines
+    .map((f: string, i: number) => `Feature ${i + 1}: "${f}"`)
+    .join("\n");
+
+  let prompt = "";
+
+  if (infoStyle === "Pop") {
+    prompt = `Create a MAXIMUM-IMPACT POP-STYLE e-commerce infographic. Think comic book cover meets sports poster meets street art.
+
+STEP 1 — BACKGROUND:
+Create an explosive radial burst / starburst background with sharp rays emanating from the center, filling the entire frame edge to edge. Use 2–3 highly saturated complementary colors (e.g. bright red + yellow, electric blue + lime, vivid orange + purple). High-contrast rays, no white backgrounds.
+
+STEP 2 — PRODUCT:
+Place a photorealistic product as the central hero. The product must appear to "pop out" with a strong drop shadow or glow effect behind it.
+
+STEP 3 — TITLE:
+Convert the title to ALL CAPS before rendering. Always render the title in uppercase, regardless of how it was typed.
+Render in MASSIVE, BOLD 3D lettering. Thick black outline (stroke), strong drop shadow, slight 3D extrusion effect. Heavy condensed sans-serif (Impact / Anton / Bebas Neue).
+TITLE: "${title}"
+Do not add, remove or change any word — only convert to uppercase.
+
+STEP 4 — FEATURE BADGES:
+Render ALL features listed below without exception. Do not select, filter or omit any of them. Every feature gets its own badge: bold rounded rectangle or explosive splat shape, thick 3–4px colored border, strong drop shadow, bold relevant icon + short bold uppercase text. Feel like stickers slapped onto a sports poster.
+${featureLines.length > 0 ? `\nFEATURES TO RENDER (ALL of them, no exceptions):\n${featureList}\n` : ""}
+LAYOUT BY ASPECT RATIO — apply the layout matching the image dimensions:
+- Square (1:1): product perfectly centered, badges arranged around it (top-left, top-right, bottom-center).
+- Portrait (9:16): title large at the top → product dominant in the center → badges in a row below.
+- Landscape (16:9): product on the right two-thirds → title + badges stacked vertically on the left third.
+
+ENERGY: Maximum visual intensity. Sports poster meets comic book cover. Bold, loud, impossible to scroll past.
+
+CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
+- Title: render every word exactly, converted to UPPERCASE.
+- Features: render ALL of them exactly as provided. Do not omit, merge or rewrite any.
+- Numbers must be copied exactly. Preserve all accents (á, é, í, ó, ú, ñ, ü).
+- Do NOT invent decorative text that was not requested.`;
+  } else {
+    prompt = `Create an ELEGANT magazine-style product infographic. Premium catalog / editorial magazine quality — full-bleed lifestyle photo with text floating on top.
+
+STEP 1 — SCENE:
+Generate a real, photorealistic lifestyle scene that fills the ENTIRE image edge to edge — natural lighting, real textures, genuine depth of field. Choose an aspirational setting appropriate to the product (e.g. kitchen product → marble countertop with warm morning light; tech product → clean wooden desk by a window; beauty product → bathroom vanity with golden-hour glow; sports product → natural outdoor setting). NO solid color backgrounds. NO gradients. A REAL photographed-looking scene. The photo has NO panels, NO color blocks, NO overlays, NO semi-transparent layers of any kind.
+
+STEP 2 — PRODUCT:
+Place a photorealistic product naturally in the scene as the undisputed hero. Realistic lighting, contact shadow, natural integration. It must look like it was physically present in that scene.
+
+STEP 3 — TITLE:
+Convert the title to ALL CAPS before rendering. Always render the title in uppercase, regardless of how it was typed.
+Float the title directly over the photo in large, bold, uppercase, clean sans-serif. Pure white text (#FFFFFF) with a strong multi-layer drop shadow ONLY (e.g. 2px solid black shadow + 4px soft black shadow). NO background behind the title — no box, no rounded rectangle, no pill shape, no color block, no semi-transparent layer. The text sits directly on the photo with shadow as the only readability aid, like a magazine cover.
+TITLE: "${title}"
+Do not add, remove or change any word — only convert to uppercase.
+
+STEP 4 — FEATURES:
+Render ALL features listed below without exception. Do not select, filter or omit any of them. Float each feature directly over the photo: a ✓ checkmark or shield icon + short bold uppercase white text with strong drop shadow. NO background behind the text, NO panels, NO bordered boxes, NO arrow lines. Text floats over the photo exactly like a magazine cover headline.
+${featureLines.length > 0 ? `\nFEATURES TO RENDER (ALL of them, no exceptions):\n${featureList}\n` : ""}
+LAYOUT BY ASPECT RATIO — apply the layout matching the image dimensions:
+- Square (1:1): title large at the top of the photo → product centered → features at the bottom, spaced horizontally.
+- Portrait (9:16): title at the top → product large and centered → features in a horizontal row near the bottom.
+- Landscape (16:9): title + features stacked vertically on the left side → product prominent on the right.
+
+TYPOGRAPHY RULE: Every character of text — title and features — is rendered in pure white (#FFFFFF), bold weight, clean sans-serif, with a strong multi-layer drop shadow. This is the ONLY technique allowed for text readability. No backgrounds, boxes or overlays of any kind behind any text.
+
+MOOD: Aspirational, sophisticated. Premium editorial magazine cover — full-bleed photo, text floating on top.
+
+CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
+- Title: render every word exactly, converted to UPPERCASE. No background behind it.
+- Features: render ALL of them exactly as provided. Do not omit, merge or rewrite any.
+- Numbers must be copied exactly. Preserve all accents (á, é, í, ó, ú, ñ, ü).
+- NO arrow lines or leader lines. Use ✓ checkmark or shield icons only.
+- Do NOT invent decorative text that was not requested.`;
+  }
+
+  const sizeMap: Record<string, string> = {
+    "1:1":  "1024x1024",
+    "16:9": "1792x1024",
+    "9:16": "1024x1792",
+  };
+
+  const response = await fetch("https://api.openai.com/v1/images/generations", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey || process.env.OPENAI_API_KEY || ""}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-image-1",
+      prompt,
+      n: 1,
+      size: sizeMap[ar] || "1024x1024",
+      response_format: "b64_json",
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`OpenAI API error ${response.status}: ${err}`);
+  }
+
+  const data = await response.json();
+  const b64 = data.data?.[0]?.b64_json;
+  if (!b64) throw new Error("No image returned by OpenAI API.");
+  return `data:image/png;base64,${b64}`;
 }
 
 // ─── ANALYZE PRODUCT (para Video 360°) ───────────────────────────────────────
