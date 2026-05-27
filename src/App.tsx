@@ -393,11 +393,11 @@ export default function App() {
     let headers: string;
     let example: string;
     if (selectedStyle === "Technical") {
-      headers = "sku,ancho,alto,profundo";
-      example = "producto-001,30,20,15";
+      headers = "sku,descripcion_producto,ancho,alto,profundo";
+      example = "producto-001,Descripción del producto,30,20,15";
     } else if (selectedStyle === "Infographic") {
-      headers = "sku,titulo,caracteristicas,estilo,escenario";
-      example = "producto-001,Mi Producto Premium,Duradero|Elegante|Económico,Pop,";
+      headers = "sku,descripcion_producto,titulo,caracteristicas,estilo,escenario";
+      example = "producto-001,Descripción del producto,Mi Producto Premium,Duradero|Elegante|Económico,Pop,";
     } else {
       headers = "sku,descripcion_producto,entorno";
       example = "producto-001,Descripción del producto,Cocina moderna con luz natural";
@@ -629,14 +629,13 @@ export default function App() {
 
   // ── Conditional inputs (single mode) ──────────────────────────────────────
   const renderSingleInputs = () => (
-    <AnimatePresence mode="wait">
-      {(selectedStyle === "Ecom" || selectedStyle === "Video360") && (
-        <motion.div key="ecom" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-2 pb-4">
-          <Label className="text-[10px] uppercase text-brand-violet/60">Nombre/Descripción del Producto</Label>
-          <Input placeholder="Ej: Zapatillas deportivas rojas (Opcional)" value={productDescription} onChange={e => setProductDescription(e.target.value)} className="input-premium h-10 text-xs" />
-          <p className="text-[9px] text-white/30 uppercase tracking-tighter">Ayuda a la IA a identificar el producto con precisión</p>
-        </motion.div>
-      )}
+    <>
+      <div className="space-y-2 pb-4">
+        <Label className="text-[10px] uppercase text-brand-violet/60">Descripción del Producto (Opcional)</Label>
+        <Input placeholder="Ej: Zapatillas deportivas rojas Nike" value={productDescription} onChange={e => setProductDescription(e.target.value)} className="input-premium h-10 text-xs" />
+        <p className="text-[9px] text-white/30 uppercase tracking-tighter">Ayuda a la IA a identificar el producto con precisión</p>
+      </div>
+      <AnimatePresence mode="wait">
       {(selectedStyle === "Lifestyle" || selectedStyle === "LifestyleNoHuman") && (
         <motion.div key="lifestyle" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-2 pb-4">
           <Label className="text-[10px] uppercase text-brand-violet/60">
@@ -704,38 +703,52 @@ export default function App() {
         </motion.div>
       )}
     </AnimatePresence>
+    </>
   );
 
   // ── Batch item inputs (sin duplicado de Infografía) ───────────────────────
   const renderBatchItemInputs = (item: BatchItem) => {
     const upd = (patch: Partial<BatchItem>) => setBatchItems(prev => prev.map(i => i.id === item.id ? { ...i, ...patch } : i));
-    if (selectedStyle === "Ecom") return (
-      <Input placeholder="Nombre/Descripción (Opcional)"
+    const descField = (
+      <Input placeholder="Descripción del Producto (Opcional)"
         value={item.productDescription || ""} onChange={e => upd({ productDescription: e.target.value })}
         className="h-8 text-[10px] bg-black/40 border-white/5" />
     );
+    if (selectedStyle === "Ecom") return (
+      <div className="space-y-2">{descField}</div>
+    );
     if (selectedStyle === "LifestyleNoHuman") return (
-      <Input placeholder="Entorno para portada ML (Opcional)"
-        value={item.lifestylePrompt || ""} onChange={e => upd({ lifestylePrompt: e.target.value })}
-        className="h-8 text-[10px] bg-black/40 border-white/5" />
+      <div className="space-y-2">
+        {descField}
+        <Input placeholder="Entorno para portada ML (Opcional)"
+          value={item.lifestylePrompt || ""} onChange={e => upd({ lifestylePrompt: e.target.value })}
+          className="h-8 text-[10px] bg-black/40 border-white/5" />
+      </div>
     );
     if (selectedStyle === "Lifestyle") return (
-      <Input placeholder="Entorno específico (Opcional)" value={item.lifestylePrompt || ""}
-        onChange={e => upd({ lifestylePrompt: e.target.value })} className="h-8 text-[10px] bg-black/40 border-white/5" />
+      <div className="space-y-2">
+        {descField}
+        <Input placeholder="Entorno específico (Opcional)" value={item.lifestylePrompt || ""}
+          onChange={e => upd({ lifestylePrompt: e.target.value })} className="h-8 text-[10px] bg-black/40 border-white/5" />
+      </div>
     );
     if (selectedStyle === "Technical") return (
-      <div className="grid grid-cols-3 gap-2">
-        {(["width", "height", "depth"] as const).map((k, i) => (
-          <Input key={k} placeholder={["Ancho (cm)", "Alto (cm)", "Profundo (cm)"][i]}
-            value={item[k] || ""} onChange={e => upd({ [k]: e.target.value })}
-            className={cn("h-8 text-[9px] bg-black/40 border-white/5", !item[k]?.trim() && "border-red-500/50")} />
-        ))}
+      <div className="space-y-2">
+        {descField}
+        <div className="grid grid-cols-3 gap-2">
+          {(["width", "height", "depth"] as const).map((k, i) => (
+            <Input key={k} placeholder={["Ancho (cm)", "Alto (cm)", "Profundo (cm)"][i]}
+              value={item[k] || ""} onChange={e => upd({ [k]: e.target.value })}
+              className={cn("h-8 text-[9px] bg-black/40 border-white/5", !item[k]?.trim() && "border-red-500/50")} />
+          ))}
+        </div>
       </div>
     );
     if (selectedStyle === "Infographic") {
       const itemStyle = item.infoStyle || "Pop";
       return (
         <div className="space-y-2">
+          {descField}
           <div className="grid grid-cols-2 gap-1.5">
             {(["Pop", "Elegante"] as const).map(s => (
               <Button key={s} onClick={() => upd({ infoStyle: s })} size="sm"

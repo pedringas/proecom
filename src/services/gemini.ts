@@ -27,7 +27,7 @@ export async function transformImage(
 
     // ─── 1. PRODUCTO (fondo blanco de estudio) ───────────────────────────────
     case "Ecom":
-      prompt = `You are a professional e-commerce photographer. Analyze the attached image and the product name/description: "${extraData?.productDescription || "product"}".
+      prompt = `${extraData?.productDescription ? `Product description provided by user: "${extraData.productDescription}"\n\n` : ""}You are a professional e-commerce photographer. Analyze the attached image and the product name/description: "${extraData?.productDescription || "product"}".
 Transform it into a professional e-commerce product photograph.
 
 KEY REQUIREMENTS:
@@ -40,7 +40,7 @@ KEY REQUIREMENTS:
 
     // ─── 2. PORTADA ML (lifestyle SIN humanos) ───────────────────────────────
     case "LifestyleNoHuman":
-      prompt = `You are a professional lifestyle product photographer. Using the attached product image as an exact reference, generate a lifestyle photograph WITHOUT any people or human body parts.
+      prompt = `${extraData?.productDescription ? `Product description provided by user: "${extraData.productDescription}"\n\n` : ""}You are a professional lifestyle product photographer. Using the attached product image as an exact reference, generate a lifestyle photograph WITHOUT any people or human body parts.
 
 KEY REQUIREMENTS:
 1. PRODUCT FIDELITY: The product must look exactly like in the attached image — same shape, color, brand, labels, materials. Do NOT redesign or reimagine it.
@@ -56,7 +56,7 @@ KEY REQUIREMENTS:
 
     // ─── 3. LIFESTYLE (CON personas) ─────────────────────────────────────────
     case "Lifestyle":
-      prompt = `You are a professional lifestyle photographer. Using the attached product image as an exact reference, generate a lifestyle photograph showing the product in use by people.
+      prompt = `${extraData?.productDescription ? `Product description provided by user: "${extraData.productDescription}"\n\n` : ""}You are a professional lifestyle photographer. Using the attached product image as an exact reference, generate a lifestyle photograph showing the product in use by people.
 
 KEY REQUIREMENTS:
 1. PRODUCT FIDELITY: The product must look exactly like in the attached image — same shape, color, brand, labels, materials. Do NOT redesign it.
@@ -81,7 +81,7 @@ KEY REQUIREMENTS:
         "9:16": "1024x1792",
       };
 
-      const technicalPrompt = `You are a professional product photographer and graphic designer creating a technical dimensions sheet for an e-commerce listing.
+      const technicalPrompt = `${extraData?.productDescription ? `Product description provided by user: "${extraData.productDescription}"\n\n` : ""}You are a professional product photographer and graphic designer creating a technical dimensions sheet for an e-commerce listing.
 
 STEP 1 — PRODUCT PHOTO:
 Place the original product from the attached image on a pure white background (#FFFFFF). Keep 100% visual fidelity: same shape, angle, colors, brand, labels. Do not alter the product in any way.
@@ -189,6 +189,8 @@ async function generateInfographic(
   const infoStyle = extraData?.infoStyle || "Pop";
   const ar = (extraData?.aspectRatio as string) || "1:1";
   const infoScenario = (extraData?.infoScenario as string) || "";
+  const productDesc = (extraData?.productDescription as string) || "";
+  const descPrefix = productDesc ? `Product description provided by user: "${productDesc}"\n\n` : "";
 
   const featureLines = features
     .split("\n")
@@ -208,7 +210,7 @@ async function generateInfographic(
   let prompt = "";
 
   if (infoStyle === "Elegante") {
-    prompt = `GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT.
+    prompt = `${descPrefix}GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT.
 
 You are a professional product photographer and art director for a premium brand catalog.
 
@@ -249,7 +251,7 @@ CRITICAL TEXT RULES:
 
 PRODUCT FIDELITY: 100% faithful — same shape, colors, labels, materials. Never alter the product.`;
   } else {
-    prompt = `GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT. ${arDescriptions[ar] || ar}. This is the most critical requirement — design everything for this ratio from the start.
+    prompt = `${descPrefix}GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT. ${arDescriptions[ar] || ar}. This is the most critical requirement — design everything for this ratio from the start.
 
 You are an expert in e-commerce, visual neuromarketing and conversion optimization for MercadoLibre. Your mission: create the most effective product infographic possible to maximize clicks, trust and conversions.
 
