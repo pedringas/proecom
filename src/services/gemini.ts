@@ -152,28 +152,30 @@ CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
 PRODUCT FIDELITY (NON-NEGOTIABLE): Never invent accessories, change colors, alter proportions or add fake features to the product.`;
       } else {
         prompt = `STEP 1 — PRODUCT ANALYSIS (automatic, internal):
-Analyze the product in the attached image to identify: (1) its category and main use, (2) target audience and purchase motivation, (3) the core problem it solves. Then automatically select the 3 characteristics with the highest visual and commercial impact — ones understandable in under 2 seconds, with high perceived value, that differentiate this product from average listings. These 3 selected features will appear in the feature panel.
+Analyze the product in the attached image to identify: (1) its category and main use, (2) target audience and purchase motivation, (3) the core problem it solves. Then automatically select the 3 characteristics with the highest visual and commercial impact — ones understandable in under 2 seconds, with high perceived value, that differentiate this product from average listings. These 3 selected features will be rendered as text directly on the photo.
 ${featureLines.length > 0 ? `\nUSER-PROVIDED FEATURE CANDIDATES (use as input for your selection):\n${featureList}\n` : ""}
 STEP 2 — SCENE:
-Generate a real, photorealistic lifestyle scene — natural lighting, real textures, genuine depth of field. Choose a setting appropriate to this product (e.g. kitchen product → marble countertop with warm morning light; tech product → clean wooden desk by a window; beauty product → bathroom vanity with golden-hour glow; sports product → natural outdoor setting). NO solid color backgrounds. NO gradients. A REAL photographed-looking scene.
+Generate a real, photorealistic lifestyle scene that fills the ENTIRE image edge to edge — natural lighting, real textures, genuine depth of field. Choose a setting appropriate to this product (e.g. kitchen product → marble countertop with warm morning light; tech product → clean wooden desk by a window; beauty product → bathroom vanity with golden-hour glow; sports product → natural outdoor setting). NO solid color backgrounds. NO gradients. A REAL photographed-looking scene. The photo has NO panels, NO color blocks, NO overlays, NO semi-transparent layers of any kind.
 
 STEP 3 — PRODUCT:
 Place the product from the attached image naturally in the scene as the undisputed hero. Maintain 100% visual fidelity — same shape, color, brand, materials. Realistic lighting, contact shadow, natural integration. It must look like it was physically present in that scene.
 
 STEP 4 — TITLE:
-Overlay this exact title in large, bold, uppercase, clean sans-serif directly on the image. High contrast against the background, with a strong but elegant shadow or subtle outline.
+Float this exact title directly over the photo in large, bold, uppercase, clean sans-serif. White text with a strong drop shadow for readability. NO background, NO box, NO pill, NO color block behind the text — the text sits directly on the photo like a magazine cover.
 TITLE: "${title}"
 Copy every character exactly. Do not add, remove or change any letter.
 
-STEP 5 — FEATURE PANEL:
-Show the 3 auto-selected features grouped in a clean panel. Each feature: a ✓ checkmark or shield icon + short bold uppercase text. NO arrow lines or leader lines. The panel must feel like an editorial magazine sidebar — sophisticated, not cluttered.
+STEP 5 — FEATURES:
+Float the 3 auto-selected features directly over the photo. Each feature: a ✓ checkmark or shield icon + short bold uppercase white text with strong drop shadow. NO background behind the text, NO panels, NO bordered boxes, NO arrow lines. Text floats over the photo exactly like a magazine cover headline.
 
 LAYOUT BY ASPECT RATIO — apply the one matching the requested output:
-- 1:1 (square): split panel — LEFT HALF: dark/neutral panel with title at top + 3 features listed below with icons. RIGHT HALF: lifestyle photo filling edge to edge with a slight vignette.
-- 9:16 (portrait): title centered at the very top (upper 20%) → lifestyle photo dominant in the center (middle 55%) → dark or semi-transparent bar at the bottom (lower 25%) with 3 features in a horizontal row.
-- 16:9 (landscape): bold typographic panel on the left third (solid dark background, title at top + 3 features below with icons) → lifestyle photo fills the right two-thirds.
+- 1:1 (square): title large at the top of the photo → product centered → 3 features at the bottom, spaced horizontally.
+- 9:16 (portrait): title at the top of the photo → product large and centered → 3 features in a horizontal row near the bottom.
+- 16:9 (landscape): title + 3 features stacked vertically on the left side of the photo → product prominent on the right.
 
-MOOD: Aspirational, sophisticated, real. Premium catalog / editorial magazine quality.
+TYPOGRAPHY RULE: Every character of text — title and features — is rendered in pure white (#FFFFFF), bold weight, clean sans-serif, with a strong multi-layer drop shadow (e.g. 2px black shadow + 4px soft black shadow) to ensure legibility over any background. This is the ONLY technique allowed for text readability. No backgrounds of any kind.
+
+MOOD: Aspirational, sophisticated. Premium editorial magazine cover — full-bleed photo, text floating on top.
 
 CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
 - Copy title EXACTLY. Do not paraphrase, translate, summarize or add any word.
