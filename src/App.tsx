@@ -115,38 +115,6 @@ const ComparisonSlider = ({ before, after }: { before: string; after: string }) 
   );
 };
 
-// ─── Fit to aspect ratio (letterbox / white padding) ─────────────────────────
-const fitToAspectRatio = (base64DataUrl: string, ratio: "1:1" | "9:16" | "16:9"): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => {
-      const [rw, rh] = ratio.split(":").map(Number);
-      const targetRatio = rw / rh;
-      const srcRatio = img.width / img.height;
-      // Canvas must contain the full source image with target ratio — pad with white
-      let cw: number, ch: number;
-      if (srcRatio >= targetRatio) {
-        cw = img.width;
-        ch = Math.round(img.width / targetRatio);
-      } else {
-        ch = img.height;
-        cw = Math.round(img.height * targetRatio);
-      }
-      const ox = Math.round((cw - img.width) / 2);
-      const oy = Math.round((ch - img.height) / 2);
-      const canvas = document.createElement("canvas");
-      canvas.width = cw; canvas.height = ch;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) { reject(new Error("No 2d context")); return; }
-      ctx.fillStyle = "#FFFFFF";
-      ctx.fillRect(0, 0, cw, ch);
-      ctx.drawImage(img, ox, oy);
-      resolve(canvas.toDataURL("image/png"));
-    };
-    img.onerror = reject;
-    img.src = base64DataUrl;
-  });
-
 // ─── Output format ────────────────────────────────────────────────────────────
 type OutputFormat = "png" | "webp" | "jpeg";
 
@@ -502,9 +470,8 @@ export default function App() {
         lifestylePrompt, productDescription, aspectRatio: imageAspectRatio,
         infoStyle
       });
-      const url = await fitToAspectRatio(raw, imageAspectRatio);
-      setResult(url);
-      addToHistory(image, url, selectedStyle, originalFileName);
+      setResult(raw);
+      addToHistory(image, raw, selectedStyle, originalFileName);
       toast.success("¡Transformación completada!");
     } catch {
       toast.error("Error al procesar la imagen.");
@@ -544,10 +511,9 @@ export default function App() {
           aspectRatio: item.aspectRatio || imageAspectRatio,
           infoStyle: item.infoStyle || infoStyle
         }));
-        const url  = await fitToAspectRatio(raw, item.aspectRatio || imageAspectRatio);
-        setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "completed", result: url } : it));
-        addToHistory(`data:image/jpeg;base64,${b64}`, url, selectedStyle, item.file.name);
-        if (isGoogleAuth) await handleSaveToDrive(url, item.file.name);
+        setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "completed", result: raw } : it));
+        addToHistory(`data:image/jpeg;base64,${b64}`, raw, selectedStyle, item.file.name);
+        if (isGoogleAuth) await handleSaveToDrive(raw, item.file.name);
       } catch {
         setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "error" } : it));
       }
@@ -712,7 +678,7 @@ export default function App() {
     const descField = (
       <Input placeholder="Descripción del Producto (Opcional)"
         value={item.productDescription || ""} onChange={e => upd({ productDescription: e.target.value })}
-        className="h-8 text-[10px] bg-black/40 border-white/5" />
+        className="h-9 text-[10px] bg-black/40 border-white/5" />
     );
     if (selectedStyle === "Ecom") return (
       <div className="space-y-2">{descField}</div>
@@ -722,14 +688,14 @@ export default function App() {
         {descField}
         <Input placeholder="Entorno para portada ML (Opcional)"
           value={item.lifestylePrompt || ""} onChange={e => upd({ lifestylePrompt: e.target.value })}
-          className="h-8 text-[10px] bg-black/40 border-white/5" />
+          className="h-9 text-[10px] bg-black/40 border-white/5" />
       </div>
     );
     if (selectedStyle === "Lifestyle") return (
       <div className="space-y-2">
         {descField}
         <Input placeholder="Entorno específico (Opcional)" value={item.lifestylePrompt || ""}
-          onChange={e => upd({ lifestylePrompt: e.target.value })} className="h-8 text-[10px] bg-black/40 border-white/5" />
+          onChange={e => upd({ lifestylePrompt: e.target.value })} className="h-9 text-[10px] bg-black/40 border-white/5" />
       </div>
     );
     if (selectedStyle === "Technical") return (
@@ -739,7 +705,7 @@ export default function App() {
           {(["width", "height", "depth"] as const).map((k, i) => (
             <Input key={k} placeholder={["Ancho (cm)", "Alto (cm)", "Profundo (cm)"][i]}
               value={item[k] || ""} onChange={e => upd({ [k]: e.target.value })}
-              className={cn("h-8 text-[9px] bg-black/40 border-white/5", !item[k]?.trim() && "border-red-500/50")} />
+              className={cn("h-10 text-[9px] bg-black/40 border-white/5", !item[k]?.trim() && "border-red-500/50")} />
           ))}
         </div>
       </div>
@@ -749,24 +715,24 @@ export default function App() {
       return (
         <div className="space-y-2">
           {descField}
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="grid grid-cols-2 gap-2">
             {(["Pop", "Elegante"] as const).map(s => (
               <Button key={s} onClick={() => upd({ infoStyle: s })} size="sm"
-                className={cn("h-7 text-[9px] font-black uppercase tracking-widest border",
+                className={cn("h-9 text-[9px] font-black uppercase tracking-widest border",
                   itemStyle === s ? "bg-white text-black border-white" : "bg-transparent text-white/60 border-white/10 hover:bg-white/10")}>
                 {s === "Pop" ? "Pop 🎨" : "Elegante ✨"}
               </Button>
             ))}
           </div>
           <Input placeholder="Título" value={item.infoTitle || ""} onChange={e => upd({ infoTitle: e.target.value })}
-            className={cn("h-8 text-[10px] bg-black/40 border-white/5", !item.infoTitle?.trim() && "border-red-500/50")} />
+            className={cn("h-9 text-[10px] bg-black/40 border-white/5", !item.infoTitle?.trim() && "border-red-500/50")} />
           <Textarea placeholder={"Característica 1\nCaracterística 2"} value={item.infoFeatures || ""}
             onChange={e => upd({ infoFeatures: e.target.value })}
             className={cn("h-16 text-[10px] bg-black/40 border-white/5", !item.infoFeatures?.trim() && "border-red-500/50")} />
           {itemStyle === "Elegante" && (
             <Input placeholder="Escenario (Opcional)" value={item.infoScenario || ""}
               onChange={e => upd({ infoScenario: e.target.value })}
-              className="h-8 text-[10px] bg-black/40 border-white/5" />
+              className="h-9 text-[10px] bg-black/40 border-white/5" />
           )}
         </div>
       );
@@ -982,10 +948,10 @@ export default function App() {
                 <div className="grid grid-cols-2 gap-2">
                   {STYLES.map(s => (
                     <Button key={s.id} onClick={() => setSelectedStyle(s.id)}
-                      className={cn("h-auto py-2 px-3 text-left flex flex-col items-start transition-all duration-300 border active:scale-95",
+                      className={cn("h-auto min-h-[52px] py-2 px-3 text-left flex flex-col items-start transition-all duration-300 border active:scale-95",
                         selectedStyle === s.id ? "bg-white text-black border-white shadow-[0_0_25px_rgba(255,255,255,0.3)]" : "bg-transparent text-white/60 border-brand-violet/20 hover:bg-brand-violet/10")}>
-                      <span className="text-[10px] font-black uppercase tracking-widest">{s.label}</span>
-                      <span className={cn("text-[8px] mt-0.5 font-medium", selectedStyle === s.id ? "text-black/50" : "text-white/30")}>{s.desc}</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest leading-tight">{s.label}</span>
+                      <span className={cn("text-[8px] mt-0.5 font-medium leading-tight", selectedStyle === s.id ? "text-black/50" : "text-white/30")}>{s.desc}</span>
                     </Button>
                   ))}
                 </div>
@@ -1160,12 +1126,20 @@ export default function App() {
 
                     {batchItems.length > 0 && (
                       <>
-                        <ScrollArea className="h-[450px] pr-4">
+                        <ScrollArea className="h-[380px] md:h-[450px] pr-4">
                           <div className="space-y-3">
-                            {batchItems.map(item => (
-                              <div key={item.id} className={cn("flex flex-col p-4 bg-black/40 rounded-2xl border transition-all",
-                                item.status === "completed" ? "border-green-500/40" : item.status === "error" ? "border-red-500/40" : "border-white/10")}>
-                                <div className="flex items-center gap-4">
+                            {batchItems.map((item, itemIdx) => (
+                              <div key={item.id}
+                                draggable
+                                onDragStart={() => { dragIndex.current = itemIdx; }}
+                                onDragOver={e => { e.preventDefault(); setDragOverId(item.id); }}
+                                onDrop={() => { if (dragIndex.current !== null) reorderBatch(dragIndex.current, itemIdx); dragIndex.current = null; setDragOverId(null); }}
+                                onDragEnd={() => { dragIndex.current = null; setDragOverId(null); }}
+                                className={cn("flex flex-col p-4 bg-black/40 rounded-2xl border transition-all",
+                                  item.status === "completed" ? "border-green-500/40" : item.status === "error" ? "border-red-500/40" : "border-white/10",
+                                  dragOverId === item.id && "border-brand-violet/50 bg-brand-violet/5")}>
+                                <div className="flex items-center gap-3">
+                                  <GripVertical className="w-4 h-4 text-white/20 shrink-0 cursor-grab active:cursor-grabbing" />
                                   <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/20 cursor-pointer"
                                     onClick={() => item.status === "completed" && item.result && setSelectedHistoryItem({ id: item.id, original: item.preview, result: item.result, style: selectedStyle, timestamp: Date.now(), fileName: item.file.name })}>
                                     <img src={item.status === "completed" && item.result ? item.result : item.preview} className="w-full h-full object-cover" />
@@ -1339,7 +1313,7 @@ export default function App() {
                 <div className="flex-1 overflow-hidden flex items-center justify-center p-6 md:p-12">
                   <img src={selectedHistoryItem.result} className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-2xl" referrerPolicy="no-referrer" />
                 </div>
-                <div className="p-8 bg-black/40 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
+                <div className="p-4 md:p-8 bg-black/40 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
                   <div className="flex items-center gap-4">
                     <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/10 shrink-0">
                       <img src={selectedHistoryItem.original} className="w-full h-full object-cover" />
