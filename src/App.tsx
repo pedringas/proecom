@@ -180,7 +180,8 @@ export default function App() {
   const [infoTitle, setInfoTitle]       = useState("");
   const [infoFeatures, setInfoFeatures] = useState("");
   const [infoScenario, setInfoScenario] = useState("");
-  const [infoStyle, setInfoStyle]       = useState<"Pop" | "Elegante">("Pop");
+  const [infoStyle, setInfoStyle]         = useState<"Pop" | "Elegante">("Pop");
+  const [infoTemplate, setInfoTemplate]   = useState<"laterales" | "tira" | "grilla">("laterales");
   const [lifestylePrompt, setLifestylePrompt]       = useState("");
   const [productDescription, setProductDescription] = useState("");
 
@@ -514,7 +515,7 @@ export default function App() {
         width, height, depth,
         title: infoTitle, features: infoFeatures, infoScenario,
         lifestylePrompt, productDescription, aspectRatio: imageAspectRatio,
-        infoStyle
+        infoStyle, infoTemplate
       });
       setResult(raw);
       addToHistory(image, raw, selectedStyle, originalFileName);
@@ -668,76 +669,166 @@ export default function App() {
     return null;
   };
 
-  // ── Single mode right panel inputs ────────────────────────────────────────
-  const renderSingleInputs = () => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div>
-        <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>Descripción del Producto</div>
-        <Input placeholder="Ej: Zapatillas deportivas rojas Nike" value={productDescription} onChange={e => setProductDescription(e.target.value)}
-          className="h-9 text-xs bg-black/40 border-white/[0.06]" />
-        <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", marginTop: 4, textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Opcional — Ayuda a la IA a identificar el producto</p>
+  // ── Single mode right panel inputs (required fields first per style) ────────
+  const PanelSection = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+        <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD" }}>{label}</span>
+        {hint && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.32)" }}>{hint}</span>}
       </div>
-      <AnimatePresence mode="wait">
-        {(selectedStyle === "Lifestyle" || selectedStyle === "LifestyleNoHuman") && (
-          <motion.div key="lifestyle" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>
-              {selectedStyle === "LifestyleNoHuman" ? "Entorno para Portada" : "Entorno Preferido"}
-            </div>
-            <Input placeholder={selectedStyle === "LifestyleNoHuman" ? "Ej: Cocina moderna, escritorio minimalista..." : "Ej: En un parque, en una cocina..."}
+      {children}
+    </div>
+  );
+
+  const DescField = () => (
+    <PanelSection label="Descripción del Producto" hint="opcional">
+      <Input placeholder="Ej: Zapatillas deportivas rojas Nike" value={productDescription} onChange={e => setProductDescription(e.target.value)}
+        className="h-9 text-xs bg-black/40 border-white/[0.06]" />
+      <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Ayuda a la IA a identificar el producto</p>
+    </PanelSection>
+  );
+
+  const renderSingleInputs = () => (
+    <AnimatePresence mode="wait">
+
+      {/* ── Ecom: desc only ── */}
+      {selectedStyle === "Ecom" && (
+        <motion.div key="ecom" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+          <DescField />
+        </motion.div>
+      )}
+
+      {/* ── Lifestyle / PortadaML: entorno → desc ── */}
+      {(selectedStyle === "Lifestyle" || selectedStyle === "LifestyleNoHuman") && (
+        <motion.div key="lifestyle" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+          style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <PanelSection label={selectedStyle === "LifestyleNoHuman" ? "Entorno para Portada" : "Entorno Preferido"} hint="opcional">
+            <Input placeholder={selectedStyle === "LifestyleNoHuman" ? "Ej: Cocina moderna, escritorio minimalista…" : "Ej: En un parque, en una cocina…"}
               value={lifestylePrompt} onChange={e => setLifestylePrompt(e.target.value)} className="h-9 text-xs bg-black/40 border-white/[0.06]" />
-          </motion.div>
-        )}
-        {selectedStyle === "Technical" && (
-          <motion.div key="technical" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>
-              Dimensiones <span style={{ color: "#F87171" }}>*</span>
-            </div>
+            <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>
+              {selectedStyle === "LifestyleNoHuman" ? "Estilo portada recomendado por MercadoLibre" : "Describe dónde querés ver el producto"}
+            </p>
+          </PanelSection>
+          <DescField />
+        </motion.div>
+      )}
+
+      {/* ── Technical: dimensiones (req) → desc ── */}
+      {selectedStyle === "Technical" && (
+        <motion.div key="technical" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+          style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <PanelSection label="Dimensiones" hint="requerido">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
-              {[["Ancho (cm)", width, setWidth], ["Alto (cm)", height, setHeight], ["Prof. (cm)", depth, setDepth]].map(([label, val, setter]) => (
-                <div key={label as string}>
-                  <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.32)", marginBottom: 4, textTransform: "uppercase" as const, letterSpacing: 0.8 }}>{(label as string).split(" ")[0]}</div>
-                  <Input placeholder={label as string} value={val as string} onChange={e => (setter as (v: string) => void)(e.target.value)}
-                    className={cn("h-9 text-xs bg-black/40", !(val as string).trim() ? "border-red-500/40" : "border-white/[0.06]")} />
+              {([["Ancho", width, setWidth], ["Alto", height, setHeight], ["Prof.", depth, setDepth]] as [string, string, (v: string) => void][]).map(([label, val, setter]) => (
+                <div key={label}>
+                  <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.4)", marginBottom: 5, textTransform: "uppercase" as const, letterSpacing: 0.8 }}>{label}</div>
+                  <div style={{ position: "relative" }}>
+                    <Input placeholder="0" value={val} onChange={e => setter(e.target.value)}
+                      className={cn("h-9 text-xs bg-black/40 pr-8", !val.trim() ? "border-red-500/40" : "border-white/[0.06]")} />
+                    <span style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "rgba(255,255,255,0.32)", pointerEvents: "none" }}>cm</span>
+                  </div>
                 </div>
               ))}
             </div>
-          </motion.div>
-        )}
-        {selectedStyle === "Infographic" && (
-          <motion.div key="infographic" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            <div>
-              <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>Estilo Visual</div>
-              <div style={{ display: "flex", gap: 6 }}>
-                {(["Pop", "Elegante"] as const).map(s => (
-                  <button key={s} onClick={() => setInfoStyle(s)}
-                    style={{ flex: 1, height: 34, borderRadius: 8, border: `1px solid ${infoStyle === s ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.06)"}`, background: infoStyle === s ? "rgba(255,255,255,0.08)" : "transparent", color: infoStyle === s ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                    {s === "Pop" ? "Pop 🎨" : "Elegante ✨"}
-                  </button>
-                ))}
-              </div>
+          </PanelSection>
+          <DescField />
+        </motion.div>
+      )}
+
+      {/* ── Infographic: título + puntos (req) → plantilla → desc ── */}
+      {selectedStyle === "Infographic" && (
+        <motion.div key="infographic" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+          style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+          {/* Título */}
+          <PanelSection label="Título" hint="encabezado">
+            <Input placeholder="Ej: Sonido que se siente" value={infoTitle} onChange={e => setInfoTitle(e.target.value)}
+              className={cn("h-9 text-xs bg-black/40", !infoTitle.trim() ? "border-red-500/40" : "border-white/[0.06]")} />
+          </PanelSection>
+
+          {/* Puntos */}
+          <PanelSection label="Puntos a destacar" hint={`máx. 4 · ${infoFeatures.split("\n").filter(l => l.trim()).length}/4`}>
+            <Textarea
+              placeholder={"Material premium\nBluetooth 5.3\n30h de batería\nResistente IPX5"}
+              value={infoFeatures} onChange={e => setInfoFeatures(e.target.value)}
+              className={cn("text-xs h-24 bg-black/40", !infoFeatures.trim() ? "border-red-500/40" : "border-white/[0.06]")} />
+            <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Un punto por línea</p>
+            <button
+              style={{ background: "transparent", border: "1px dashed rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: 600, padding: "8px 12px", borderRadius: 10, cursor: "not-allowed", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: 0.7 }}
+              disabled title="Próximamente">
+              <Sparkles size={13} strokeWidth={1.75} /> Sugerir con IA
+            </button>
+          </PanelSection>
+
+          {/* Estilo visual */}
+          <PanelSection label="Estilo Visual">
+            <div style={{ display: "flex", gap: 6 }}>
+              {(["Pop", "Elegante"] as const).map(s => (
+                <button key={s} onClick={() => setInfoStyle(s)}
+                  style={{ flex: 1, height: 34, borderRadius: 8, border: `1px solid ${infoStyle === s ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.06)"}`, background: infoStyle === s ? "rgba(255,255,255,0.08)" : "transparent", color: infoStyle === s ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                  {s === "Pop" ? "Pop 🎨" : "Elegante ✨"}
+                </button>
+              ))}
             </div>
-            <div>
-              <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>Título <span style={{ color: "#F87171" }}>*</span></div>
-              <Input placeholder="Ej: El mejor del mercado" value={infoTitle} onChange={e => setInfoTitle(e.target.value)}
-                className={cn("h-9 text-xs bg-black/40", !infoTitle.trim() ? "border-red-500/40" : "border-white/[0.06]")} />
+            <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>
+              {infoStyle === "Pop" ? "Colores vibrantes y llamativos" : "Paleta sofisticada derivada del producto"}
+            </p>
+          </PanelSection>
+
+          {/* Escenario (solo Elegante) */}
+          {infoStyle === "Elegante" && (
+            <PanelSection label="Escenario" hint="opcional">
+              <Input placeholder="Ej: Mesa de madera con taza humeante" value={infoScenario} onChange={e => setInfoScenario(e.target.value)}
+                className="h-9 text-xs bg-black/40 border-white/[0.06]" />
+            </PanelSection>
+          )}
+
+          {/* Plantilla de disposición */}
+          <PanelSection label="Plantilla">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+              {([
+                { id: "laterales" as const, label: "Laterales", preview: (
+                  <svg width="36" height="26" viewBox="0 0 36 26" fill="none">
+                    <rect x="1" y="1" width="34" height="24" rx="3" stroke="currentColor" strokeWidth="1.5" />
+                    <circle cx="18" cy="13" r="6" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
+                    <rect x="3" y="4" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
+                    <rect x="3" y="17" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
+                    <rect x="27" y="4" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
+                    <rect x="27" y="17" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
+                  </svg>
+                )},
+                { id: "tira" as const, label: "Tira", preview: (
+                  <svg width="36" height="26" viewBox="0 0 36 26" fill="none">
+                    <rect x="1" y="1" width="34" height="24" rx="3" stroke="currentColor" strokeWidth="1.5" />
+                    <circle cx="18" cy="11" r="6" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
+                    <rect x="4" y="20" width="28" height="4" rx="1" fill="currentColor" opacity="0.6" />
+                  </svg>
+                )},
+                { id: "grilla" as const, label: "Grilla", preview: (
+                  <svg width="36" height="26" viewBox="0 0 36 26" fill="none">
+                    <rect x="1" y="1" width="34" height="24" rx="3" stroke="currentColor" strokeWidth="1.5" />
+                    <rect x="4" y="4" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
+                    <rect x="15" y="4" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
+                    <rect x="26" y="4" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
+                    <rect x="4" y="17" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
+                    <rect x="15" y="17" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
+                    <rect x="26" y="17" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
+                  </svg>
+                )},
+              ] as { id: "laterales" | "tira" | "grilla"; label: string; preview: React.ReactNode }[]).map(t => (
+                <button key={t.id} onClick={() => setInfoTemplate(t.id)}
+                  style={{ borderRadius: 10, padding: "10px 0 8px", background: infoTemplate === t.id ? "rgba(196,181,253,0.08)" : "transparent", border: `1px solid ${infoTemplate === t.id ? "rgba(196,181,253,0.25)" : "rgba(255,255,255,0.06)"}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, cursor: "pointer", color: infoTemplate === t.id ? "#C4B5FD" : "rgba(255,255,255,0.4)" }}>
+                  {t.preview}
+                  <span style={{ fontSize: 9.5, fontWeight: 600 }}>{t.label}</span>
+                </button>
+              ))}
             </div>
-            <div>
-              <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>Características <span style={{ color: "#F87171" }}>*</span></div>
-              <Textarea placeholder={"Duradero\nElegante\nEconómico"} value={infoFeatures} onChange={e => setInfoFeatures(e.target.value)}
-                className={cn("text-xs h-20 bg-black/40", !infoFeatures.trim() ? "border-red-500/40" : "border-white/[0.06]")} />
-              <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", marginTop: 4, textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Una característica por línea</p>
-            </div>
-            {infoStyle === "Elegante" && (
-              <div>
-                <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>Escenario</div>
-                <Input placeholder="Ej: Mesa de madera con taza humeante" value={infoScenario} onChange={e => setInfoScenario(e.target.value)}
-                  className="h-9 text-xs bg-black/40 border-white/[0.06]" />
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+          </PanelSection>
+
+          <DescField />
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -950,11 +1041,19 @@ export default function App() {
                 {/* Stage footer */}
                 {result && !isProcessing && (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, color: "rgba(255,255,255,0.32)", flexShrink: 0 }}>
-                    <span>{originalFileName || "imagen.jpg"}</span>
-                    <button onClick={() => { setResult(null); setShowComparison(false); }}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.32)", fontSize: 11.5, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                      <RefreshCw size={12} strokeWidth={1.75} /> reiniciar
-                    </button>
+                    <span style={{ fontFamily: "ui-monospace,Menlo,monospace", fontSize: 11 }}>
+                      {originalFileName || "imagen.jpg"} · {outputFormat.toUpperCase()}
+                    </span>
+                    <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                      <button onClick={() => fileInputRef.current?.click()}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.32)", fontSize: 11.5, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <RefreshCw size={12} strokeWidth={1.75} /> cambiar foto
+                      </button>
+                      <button onClick={() => { setResult(null); setShowComparison(false); }}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "#C4B5FD", fontSize: 11.5 }}>
+                        regenerar →
+                      </button>
+                    </div>
                   </div>
                 )}
               </main>
