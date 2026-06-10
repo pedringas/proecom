@@ -187,6 +187,13 @@ export default function App() {
   const [lifestylePrompt, setLifestylePrompt]       = useState("");
   const [productDescription, setProductDescription] = useState("");
 
+  // Error / status states
+  const [generationError, setGenerationError] = useState<{ message: string; code: string } | null>(null);
+  const [uploadError, setUploadError]         = useState<{ fileName: string; reason: string } | null>(null);
+  const [isOffline, setIsOffline]             = useState(!navigator.onLine);
+  const [isRateLimitOpen, setIsRateLimitOpen] = useState(false);
+  const [isDriveOnboardingOpen, setIsDriveOnboardingOpen] = useState(false);
+
   // Batch
   const [batchItems, setBatchItems]       = useState<BatchItem[]>([]);
   const [isBatchMode, setIsBatchMode]     = useState(false);
@@ -242,6 +249,15 @@ export default function App() {
       localStorage.setItem("proecom_history", JSON.stringify(toSave));
     } catch { /* storage full */ }
   }, [history]);
+
+  // ── Offline detection ─────────────────────────────────────────────────────
+  useEffect(() => {
+    const onOnline  = () => setIsOffline(false);
+    const onOffline = () => setIsOffline(true);
+    window.addEventListener("online",  onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => { window.removeEventListener("online", onOnline); window.removeEventListener("offline", onOffline); };
+  }, []);
 
   // ── Auth check ─────────────────────────────────────────────────────────────
   useEffect(() => {
@@ -302,7 +318,20 @@ export default function App() {
 
   // ── File processing ───────────────────────────────────────────────────────
   const processFile = async (file: File) => {
-    if (file.type && !file.type.startsWith("image/")) { toast.error("Por favor, sube una imagen válida."); return; }
+    const MAX_MB = 10;
+    const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
+    if (file.type && !file.type.startsWith("image/")) {
+      const ext = file.name.split(".").pop()?.toUpperCase() || "archivo";
+      setUploadError({ fileName: file.name, reason: `"${file.name}" es un ${ext} — solo se aceptan JPG, PNG y WebP.` });
+      return;
+    }
+    if (file.size > MAX_MB * 1024 * 1024) {
+      const mb = (file.size / 1024 / 1024).toFixed(1);
+      setUploadError({ fileName: file.name, reason: `"${file.name}" pesa ${mb} MB — el máximo es ${MAX_MB} MB.` });
+      return;
+    }
+    setUploadError(null);
+    setGenerationError(null);
     setMimeType(file.type || "image/jpeg");
     setOriginalFileName(file.name || "image.jpg");
     try {
@@ -512,6 +541,7 @@ export default function App() {
   const handleTransform = async () => {
     if (!image) return;
     setIsProcessing(true);
+    setGenerationError(null);
     try {
       const raw = await transformImage(image.split(",")[1], mimeType, selectedStyle, "", {
         width, height, depth,
@@ -522,8 +552,14 @@ export default function App() {
       setResult(raw);
       addToHistory(image, raw, selectedStyle, originalFileName);
       toast.success("¡Transformación completada!");
-    } catch {
-      toast.error("Error al procesar la imagen.");
+    } catch (e: any) {
+      const msg = e?.message || "";
+      if (msg.includes("429") || msg.toLowerCase().includes("quota") || msg.toLowerCase().includes("rate")) {
+        setIsRateLimitOpen(true);
+      } else {
+        const code = `GEN_ERR · ${Date.now().toString(36).toUpperCase()}`;
+        setGenerationError({ message: "El modelo tardó demasiado o no pudo procesar la imagen.", code });
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -574,7 +610,12 @@ export default function App() {
   };
 
   // ── Drive ─────────────────────────────────────────────────────────────────
-  const handleConnectDrive = async () => {
+  const handleConnectDrive = () => {
+    if (!isGoogleAuth) { setIsDriveOnboardingOpen(true); return; }
+    proceedConnectDrive();
+  };
+
+  const proceedConnectDrive = async () => {
     const popup = window.open("", "oauth_popup", "width=600,height=700");
     if (!popup) { toast.error("El navegador bloqueó el popup. Permite los popups para este sitio."); return; }
     try {
@@ -905,6 +946,20 @@ export default function App() {
           </header>
         )}
 
+        {/* ── Offline banner ───────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {isOffline && (
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 40, opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+              style={{ background: "rgba(248,113,113,0.12)", borderBottom: "1px solid rgba(248,113,113,0.25)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 18px", flexShrink: 0, overflow: "hidden" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "#F87171" }}>
+                <span style={{ width: 8, height: 8, borderRadius: 999, background: "#F87171", display: "inline-block", animation: "pulse 1.5s ease-in-out infinite" }} />
+                Sin conexión — reintentando… Tu trabajo está guardado localmente.
+              </div>
+              <span style={{ fontSize: 11, color: "rgba(248,113,113,0.6)" }}>Reintentando en 5s</span>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* ── Body ─────────────────────────────────────────────────────────── */}
         <div className="flex flex-1 min-h-0" style={{ height: isEmbed ? "100vh" : "calc(100vh - 56px)" }}>
 
@@ -965,7 +1020,53 @@ export default function App() {
                   onDragOver={e => e.preventDefault()} onDrop={onDrop}
                 >
                   <AnimatePresence mode="wait">
-                    {isProcessing ? (
+                    {uploadError ? (
+                      <motion.div key="upload-error" className="absolute inset-0 flex flex-col items-center justify-center gap-6 p-10"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <div style={{ position: "absolute", inset: 0, border: "1.5px dashed rgba(248,113,113,0.4)", borderRadius: 20, pointerEvents: "none" }} />
+                        <div style={{ width: 72, height: 72, borderRadius: 20, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", display: "flex", alignItems: "center", justifyContent: "center", color: "#F87171" }}>
+                          <X size={32} strokeWidth={1.5} />
+                        </div>
+                        <div style={{ textAlign: "center", maxWidth: 380 }}>
+                          <h3 style={{ fontFamily: '"Playfair Display",serif', fontSize: 22, fontWeight: 700, color: "#F87171", margin: "0 0 10px" }}>Archivo rechazado</h3>
+                          <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.7)", margin: "0 0 6px", lineHeight: 1.5 }}>{uploadError.reason}</p>
+                          <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", margin: 0 }}>Formatos aceptados: JPG · PNG · WebP · hasta 10 MB</p>
+                        </div>
+                        <button onClick={() => { setUploadError(null); fileInputRef.current?.click(); }}
+                          style={{ height: 44, padding: "0 20px", borderRadius: 12, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 13.5, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}>
+                          <Upload size={16} strokeWidth={1.75} /> Elegir otro archivo
+                        </button>
+                        <button onClick={() => setUploadError(null)}
+                          style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", fontSize: 12 }}>
+                          Cancelar
+                        </button>
+                      </motion.div>
+                    ) : generationError ? (
+                      <motion.div key="gen-error" className="absolute inset-0 flex flex-col items-center justify-center gap-6 p-10"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <div style={{ width: 72, height: 72, borderRadius: 20, background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.3)", display: "flex", alignItems: "center", justifyContent: "center", color: "#F87171" }}>
+                          <RefreshCw size={28} strokeWidth={1.5} />
+                        </div>
+                        <div style={{ textAlign: "center", maxWidth: 400 }}>
+                          <h3 style={{ fontFamily: '"Playfair Display",serif', fontSize: 22, fontWeight: 700, margin: "0 0 10px" }}>No pudimos generar la imagen</h3>
+                          <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.6)", margin: "0 0 8px", lineHeight: 1.5 }}>{generationError.message}</p>
+                          <p style={{ fontSize: 12.5, color: "#4ADE80", margin: 0 }}>Tu foto y tus ajustes están intactos — podés reintentar sin perder nada.</p>
+                        </div>
+                        <div style={{ display: "flex", gap: 10 }}>
+                          <button onClick={() => { setGenerationError(null); handleTransform(); }}
+                            style={{ height: 44, padding: "0 20px", borderRadius: 12, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 13.5, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, boxShadow: "0 10px 28px -10px rgba(196,181,253,0.5)" }}>
+                            <RefreshCw size={16} strokeWidth={1.75} /> Reintentar
+                          </button>
+                          <button onClick={() => toast.info("Reporte enviado. Gracias.")}
+                            style={{ height: 44, padding: "0 16px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                            Reportar
+                          </button>
+                        </div>
+                        <div style={{ fontFamily: "ui-monospace,Menlo,monospace", fontSize: 10.5, color: "rgba(255,255,255,0.2)", padding: "6px 12px", background: "rgba(0,0,0,0.4)", borderRadius: 6, border: "1px solid rgba(255,255,255,0.06)" }}>
+                          {generationError.code}
+                        </div>
+                      </motion.div>
+                    ) : isProcessing ? (
                       <motion.div key="loading" className="absolute inset-0 flex flex-col items-center justify-center"
                         style={{ background: "linear-gradient(135deg,#0e0e12,#161620)" }}
                         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
@@ -1666,6 +1767,100 @@ export default function App() {
                     ));
                   })()}
                 </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Rate limit modal ──────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {isRateLimitOpen && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[110] flex items-center justify-center p-6"
+              style={{ background: "rgba(5,5,5,0.85)", backdropFilter: "blur(16px)" }}
+              onClick={() => setIsRateLimitOpen(false)}>
+              <motion.div initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 16 }}
+                style={{ width: "100%", maxWidth: 420, background: "rgba(11,11,13,0.98)", borderRadius: 22, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 50px 120px -30px rgba(0,0,0,0.8)", padding: "32px 28px", display: "flex", flexDirection: "column", gap: 20 }}
+                onClick={e => e.stopPropagation()}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 14, background: "rgba(196,181,253,0.1)", border: "1px solid rgba(196,181,253,0.25)", display: "flex", alignItems: "center", justifyContent: "center", color: "#C4B5FD", flexShrink: 0 }}>
+                    <History size={20} strokeWidth={1.75} />
+                  </div>
+                  <div>
+                    <h3 style={{ fontFamily: '"Playfair Display",serif', fontSize: 20, fontWeight: 700, margin: "0 0 6px" }}>El equipo alcanzó el límite de la hora</h3>
+                    <p style={{ fontSize: 13, color: "rgba(255,255,255,0.55)", margin: 0, lineHeight: 1.5 }}>La cuota compartida se libera automáticamente. No se perdió ningún trabajo.</p>
+                  </div>
+                </div>
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8, fontSize: 11.5 }}>
+                    <span style={{ color: "rgba(255,255,255,0.55)" }}>Uso del equipo · esta hora</span>
+                    <span style={{ color: "#C4B5FD", fontWeight: 600 }}>500 / 500</span>
+                  </div>
+                  <div style={{ height: 6, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                    <div style={{ width: "100%", height: "100%", background: "linear-gradient(90deg,#C4B5FD,#8B5CF6)", borderRadius: 999 }} />
+                  </div>
+                  <p style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 8, textAlign: "center" }}>Se libera en ~12 min</p>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <button onClick={() => { toast.success("Te avisamos cuando la cuota se libere."); setIsRateLimitOpen(false); }}
+                    style={{ height: 48, borderRadius: 12, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 13.5, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 10px 28px -10px rgba(196,181,253,0.5)" }}>
+                    Avisarme cuando se libere
+                  </button>
+                  <button onClick={() => setIsRateLimitOpen(false)}
+                    style={{ height: 44, borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+                    Entendido, vuelvo después
+                  </button>
+                </div>
+                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", textAlign: "center", margin: 0 }}>
+                  ¿Necesitás más capacidad? Escribile a IT.
+                </p>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* ── Drive onboarding modal ─────────────────────────────────────────── */}
+        <AnimatePresence>
+          {isDriveOnboardingOpen && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[110] flex items-center justify-center p-6"
+              style={{ background: "rgba(5,5,5,0.85)", backdropFilter: "blur(16px)" }}
+              onClick={() => setIsDriveOnboardingOpen(false)}>
+              <motion.div initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 16 }}
+                style={{ width: "100%", maxWidth: 420, background: "rgba(11,11,13,0.98)", borderRadius: 22, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 50px 120px -30px rgba(0,0,0,0.8)", padding: "32px 28px", display: "flex", flexDirection: "column", gap: 22 }}
+                onClick={e => e.stopPropagation()}>
+                <div style={{ textAlign: "center" }}>
+                  <div style={{ width: 52, height: 52, borderRadius: 16, background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", display: "flex", alignItems: "center", justifyContent: "center", color: "#4ADE80", margin: "0 auto 16px" }}>
+                    <Cloud size={24} strokeWidth={1.75} />
+                  </div>
+                  <h3 style={{ fontFamily: '"Playfair Display",serif', fontSize: 22, fontWeight: 700, margin: "0 0 8px" }}>Conectá tu Google Drive</h3>
+                  <p style={{ fontSize: 13.5, color: "rgba(255,255,255,0.55)", margin: 0, lineHeight: 1.5 }}>Hacé tu flujo de trabajo mucho más rápido.</p>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  {[
+                    { icon: "✓", text: "Guardado automático de cada imagen generada" },
+                    { icon: "✓", text: "Importá catálogos completos directamente desde una carpeta" },
+                    { icon: "✓", text: "Historial sincronizado en todos tus dispositivos" },
+                  ].map(b => (
+                    <div key={b.text} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                      <span style={{ width: 20, height: 20, borderRadius: 999, background: "rgba(74,222,128,0.15)", color: "#4ADE80", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, flexShrink: 0, marginTop: 1 }}>{b.icon}</span>
+                      <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.5 }}>{b.text}</span>
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <button onClick={() => { setIsDriveOnboardingOpen(false); proceedConnectDrive(); }}
+                    style={{ height: 48, borderRadius: 12, border: "none", background: "#4ADE80", color: "#062E15", fontSize: 13.5, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <Cloud size={16} strokeWidth={1.75} /> Conectar con Google
+                  </button>
+                  <button onClick={() => setIsDriveOnboardingOpen(false)}
+                    style={{ height: 40, borderRadius: 12, border: "none", background: "transparent", color: "rgba(255,255,255,0.35)", fontSize: 12.5, fontWeight: 500, cursor: "pointer" }}>
+                    Ahora no · usar solo descargas
+                  </button>
+                </div>
+                <p style={{ fontSize: 11, color: "rgba(255,255,255,0.2)", textAlign: "center", margin: 0, lineHeight: 1.4 }}>
+                  Solo accedemos a la carpeta que vos elegís. Nunca leemos otros archivos de tu Drive.
+                </p>
               </motion.div>
             </motion.div>
           )}
