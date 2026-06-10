@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, ChangeEvent, DragEvent } from "react";
+import * as XLSX from "xlsx";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Upload, Sparkles, Image as ImageIcon, Download, RefreshCw, Camera,
@@ -337,11 +338,13 @@ export default function App() {
       width: "", height: "", depth: "", infoTitle: "", infoFeatures: "",
       lifestylePrompt: "", productDescription: ""
     }));
+    toast.success(`${files.length} imagen${files.length > 1 ? "es" : ""} cargada${files.length > 1 ? "s" : ""}.`);
     setBatchItems(prev => {
       const merged = [...prev, ...newItems];
       if (csvParsedRows.length > 0) {
-        const { updated, unmatchedImages, unmatchedSkus } = applyCSVRows(merged, csvParsedRows);
+        const { updated, matched, unmatchedImages, unmatchedSkus } = applyCSVRows(merged, csvParsedRows);
         setCsvValidation({ unmatchedImages, unmatchedSkus });
+        toast.success(`SKU match: ${matched} de ${csvParsedRows.length} filas coincidieron.`);
         return updated;
       }
       return merged;
@@ -365,26 +368,38 @@ export default function App() {
     addBatchFiles(files);
   };
 
-  // ── CSV template download ─────────────────────────────────────────────────
+  // ── Template download (CSV + XLSX) ───────────────────────────────────────
+  const getTemplateRows = (): { headers: string[]; example: string[] } => {
+    if (selectedStyle === "Technical") return {
+      headers: ["sku", "descripcion_producto", "ancho", "alto", "profundo"],
+      example: ["producto-001", "Descripción del producto", "30", "20", "15"],
+    };
+    if (selectedStyle === "Infographic") return {
+      headers: ["sku", "descripcion_producto", "titulo", "caracteristicas", "estilo", "escenario"],
+      example: ["producto-001", "Descripción del producto", "Mi Producto Premium", "Duradero|Elegante|Económico", "Pop", ""],
+    };
+    return {
+      headers: ["sku", "descripcion_producto", "entorno"],
+      example: ["producto-001", "Descripción del producto", "Cocina moderna con luz natural"],
+    };
+  };
+
   const downloadCsvTemplate = () => {
-    let headers: string;
-    let example: string;
-    if (selectedStyle === "Technical") {
-      headers = "sku,descripcion_producto,ancho,alto,profundo";
-      example = "producto-001,Descripción del producto,30,20,15";
-    } else if (selectedStyle === "Infographic") {
-      headers = "sku,descripcion_producto,titulo,caracteristicas,estilo,escenario";
-      example = "producto-001,Descripción del producto,Mi Producto Premium,Duradero|Elegante|Económico,Pop,";
-    } else {
-      headers = "sku,descripcion_producto,entorno";
-      example = "producto-001,Descripción del producto,Cocina moderna con luz natural";
-    }
-    const csv = `${headers}\n${example}`;
+    const { headers, example } = getTemplateRows();
+    const csv = `${headers.join(",")}\n${example.join(",")}`;
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url; a.download = "plantilla_lote.csv"; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const downloadXlsxTemplate = () => {
+    const { headers, example } = getTemplateRows();
+    const ws = XLSX.utils.aoa_to_sheet([headers, example]);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Plantilla");
+    XLSX.writeFile(wb, "plantilla_lote.xlsx");
   };
 
   // ── CSV import & auto-match by SKU ────────────────────────────────────────
@@ -418,28 +433,55 @@ export default function App() {
     return { updated, matched, unmatchedImages, unmatchedSkus };
   };
 
+  const processSpreadsheetRows = (rows: Record<string, string>[]) => {
+    if (rows.length === 0) { toast.error("La planilla no tiene datos."); return; }
+    setCsvParsedRows(rows);
+    setBatchItems(prev => {
+      const { updated, matched, unmatchedImages, unmatchedSkus } = applyCSVRows(prev, rows);
+      setCsvValidation({ unmatchedImages, unmatchedSkus });
+      const hasImages = prev.length > 0;
+      toast.success(
+        hasImages
+          ? `Planilla cargada: ${matched} de ${rows.length} SKUs coincidieron.`
+          : `Planilla cargada: ${rows.length} filas listas. Ahora cargá las imágenes.`
+      );
+      return updated;
+    });
+  };
+
   const handleCsvImport = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const isXlsx = file.name.endsWith(".xlsx") || file.name.endsWith(".xls");
     const reader = new FileReader();
-    reader.onload = ev => {
-      const text = ev.target?.result as string;
-      const lines = text.split(/\r?\n/).filter(l => l.trim());
-      if (lines.length < 2) { toast.error("El CSV no tiene datos."); return; }
-      const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
-      const rows = lines.slice(1).map(l => {
-        const cols = l.split(",");
-        return Object.fromEntries(headers.map((h, i) => [h, (cols[i] || "").trim()]));
-      });
-      setCsvParsedRows(rows);
-      setBatchItems(prev => {
-        const { updated, matched, unmatchedImages, unmatchedSkus } = applyCSVRows(prev, rows);
-        setCsvValidation({ unmatchedImages, unmatchedSkus });
-        toast.success(`CSV importado: ${matched} de ${rows.length} SKUs coincidieron.`);
-        return updated;
-      });
-    };
-    reader.readAsText(file);
+    if (isXlsx) {
+      reader.onload = ev => {
+        const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json<string[]>(ws, { header: 1 }) as string[][];
+        if (raw.length < 2) { toast.error("La planilla no tiene datos."); return; }
+        const headers = raw[0].map(h => String(h).trim().toLowerCase());
+        const rows = raw.slice(1)
+          .filter(r => r.some(c => c !== undefined && c !== ""))
+          .map(r => Object.fromEntries(headers.map((h, i) => [h, String(r[i] ?? "").trim()])));
+        processSpreadsheetRows(rows);
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      reader.onload = ev => {
+        const text = ev.target?.result as string;
+        const lines = text.split(/\r?\n/).filter(l => l.trim());
+        if (lines.length < 2) { toast.error("La planilla no tiene datos."); return; }
+        const headers = lines[0].split(",").map(h => h.trim().toLowerCase());
+        const rows = lines.slice(1).map(l => {
+          const cols = l.split(",");
+          return Object.fromEntries(headers.map((h, i) => [h, (cols[i] || "").trim()]));
+        });
+        processSpreadsheetRows(rows);
+      };
+      reader.readAsText(file);
+    }
     if (csvInputRef.current) csvInputRef.current.value = "";
   };
 
@@ -777,7 +819,7 @@ export default function App() {
         <input type="file" ref={cameraInputRef}      onChange={e => e.target.files?.[0] && processFile(e.target.files[0])} className="hidden" accept="image/*" capture="environment" />
         <input type="file" ref={batchInputRef}       onChange={handleBatchFiles} className="hidden" accept="image/*" multiple />
         <input type="file" ref={batchCameraInputRef} onChange={handleBatchFiles} className="hidden" accept="image/*" capture="environment" />
-        <input type="file" ref={csvInputRef}         onChange={handleCsvImport}  className="hidden" accept=".csv,text/csv" />
+        <input type="file" ref={csvInputRef}         onChange={handleCsvImport}  className="hidden" accept=".csv,.xlsx,.xls,text/csv" />
 
         {/* Header */}
         {!isEmbed && (
@@ -1137,11 +1179,15 @@ export default function App() {
                       <div className="flex gap-2 w-full">
                         <Button variant="outline" onClick={downloadCsvTemplate}
                           className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 h-9 text-[10px] uppercase">
-                          <Download className="w-3 h-3 mr-1.5" /> Modelo CSV
+                          <Download className="w-3 h-3 mr-1" /> CSV
+                        </Button>
+                        <Button variant="outline" onClick={downloadXlsxTemplate}
+                          className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 h-9 text-[10px] uppercase">
+                          <Download className="w-3 h-3 mr-1" /> XLSX
                         </Button>
                         <Button variant="outline" onClick={() => csvInputRef.current?.click()}
                           className={cn("flex-1 bg-white/5 hover:bg-white/10 border-white/10 h-9 text-[10px] uppercase", csvParsedRows.length > 0 && "border-brand-violet/40 text-brand-violet")}>
-                          <Upload className="w-3 h-3 mr-1.5" /> {csvParsedRows.length > 0 ? `CSV (${csvParsedRows.length})` : "Importar CSV"}
+                          <Upload className="w-3 h-3 mr-1" /> {csvParsedRows.length > 0 ? `(${csvParsedRows.length})` : "Planilla"}
                         </Button>
                       </div>
                     </div>
