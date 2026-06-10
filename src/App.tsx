@@ -903,8 +903,8 @@ export default function App() {
         {/* ── Body ─────────────────────────────────────────────────────────── */}
         <div className="flex flex-1 min-h-0" style={{ height: isEmbed ? "100vh" : "calc(100vh - 56px)" }}>
 
-          {/* Style Rail — only in crear/lote tabs */}
-          {activeTab !== "historial" && (
+          {/* Style Rail — only in crear tab */}
+          {activeTab === "crear" && (
             <nav style={{ width: 76, flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.4)", padding: "16px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
               {STYLES.map(s => {
                 const active = selectedStyle === s.id;
@@ -1139,164 +1139,400 @@ export default function App() {
 
           {/* ── LOTE TAB ──────────────────────────────────────────────────── */}
           {activeTab === "lote" && (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 24, gap: 16, overflowY: "auto" }} className="custom-scrollbar">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ flex: 1, display: "flex", minHeight: 0, minWidth: 0 }}>
+
+            {/* ── Lote center ── */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 20, gap: 14, minWidth: 0, overflow: "hidden" }}>
+              {/* Header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexShrink: 0 }}>
                 <div>
-                  <div style={{ fontSize: 11, color: "#C4B5FD", fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase" }}>Por lote</div>
-                  <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 22, fontWeight: 700, marginTop: 2 }}>Procesamiento masivo</div>
+                  <div style={{ fontSize: 11, color: "#C4B5FD", fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase" }}>
+                    {isProcessing ? `Procesando lote · ${batchItems.filter(i => i.status === "completed" || i.status === "error").length} de ${batchItems.length}` : `Por lote${batchItems.length > 0 ? ` · ${batchItems.length} productos` : ""}`}
+                  </div>
+                  <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 22, fontWeight: 700, marginTop: 2, lineHeight: 1.1 }}>
+                    {isProcessing ? `Generando ${batchItems.length} imágenes` : batchItems.length > 0 ? "Listo para generar" : "Procesá tu catálogo en una pasada"}
+                  </div>
                 </div>
-                {batchItems.length > 0 && (
+                {batchItems.length > 0 && !isProcessing && (
                   <button onClick={() => { setBatchItems([]); setCsvParsedRows([]); setCsvValidation(null); }}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, border: "none", background: "transparent", color: "rgba(248,113,113,0.6)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
-                    <Trash2 size={13} strokeWidth={1.75} /> Reiniciar Lote
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, border: "none", background: "transparent", color: "rgba(248,113,113,0.6)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    <Trash2 size={13} strokeWidth={1.75} /> Reiniciar
                   </button>
                 )}
               </div>
 
-              {/* Style selector */}
-              <div>
-                <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 10 }}>Tipo de imagen</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {STYLES.map(s => {
-                    const SIcon = s.icon;
-                    return (
-                      <button key={s.id} onClick={() => setSelectedStyle(s.id)}
-                        style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 10, border: `1px solid ${selectedStyle === s.id ? "rgba(196,181,253,0.4)" : "rgba(255,255,255,0.06)"}`, background: selectedStyle === s.id ? "rgba(196,181,253,0.1)" : "transparent", color: selectedStyle === s.id ? "#C4B5FD" : "rgba(255,255,255,0.55)", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-                        <SIcon size={14} strokeWidth={1.75} /> {s.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              {/* ── EMPTY STATE: 3 import cards ── */}
+              {batchItems.length === 0 && (
+                <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 14, minHeight: 0 }}
+                  onDragOver={e => { e.preventDefault(); setBatchDropActive(true); }}
+                  onDragLeave={() => setBatchDropActive(false)}
+                  onDrop={handleBatchDrop}>
 
-              {/* Drop zone */}
-              <div
-                style={{ border: `2px dashed ${batchDropActive ? "#C4B5FD" : "rgba(196,181,253,0.3)"}`, borderRadius: 16, padding: 24, textAlign: "center", background: batchDropActive ? "rgba(196,181,253,0.08)" : "rgba(196,181,253,0.03)", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, transition: "all 0.15s" }}
-                onDragOver={e => { e.preventDefault(); setBatchDropActive(true); }}
-                onDragLeave={() => setBatchDropActive(false)}
-                onDrop={handleBatchDrop}
-              >
-                <p style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.92)", margin: 0, textTransform: "uppercase", letterSpacing: 1 }}>
-                  {batchDropActive ? "Soltar imágenes aquí" : "Añadir Imágenes"}
-                </p>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-                  <button onClick={() => batchInputRef.current?.click()}
-                    style={{ height: 38, padding: "0 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.92)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
-                    <ImageIcon size={14} strokeWidth={1.75} /> Galería
-                  </button>
-                  <button onClick={() => batchCameraInputRef.current?.click()}
-                    style={{ height: 38, padding: "0 14px", borderRadius: 10, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
-                    <Camera size={14} strokeWidth={1.75} /> Cámara
-                  </button>
-                  <button onClick={downloadCsvTemplate}
-                    style={{ height: 38, padding: "0 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <Download size={13} strokeWidth={1.75} /> CSV
-                  </button>
-                  <button onClick={downloadXlsxTemplate}
-                    style={{ height: 38, padding: "0 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <Download size={13} strokeWidth={1.75} /> XLSX
-                  </button>
-                  <button onClick={() => csvInputRef.current?.click()}
-                    style={{ height: 38, padding: "0 12px", borderRadius: 10, border: `1px solid ${csvParsedRows.length > 0 ? "rgba(196,181,253,0.4)" : "rgba(255,255,255,0.08)"}`, background: csvParsedRows.length > 0 ? "rgba(196,181,253,0.08)" : "transparent", color: csvParsedRows.length > 0 ? "#C4B5FD" : "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <Upload size={13} strokeWidth={1.75} /> {csvParsedRows.length > 0 ? `Planilla (${csvParsedRows.length})` : "Planilla"}
-                  </button>
-                </div>
-              </div>
-
-              {/* CSV validation panel */}
-              {csvValidation && (csvValidation.unmatchedImages.length > 0 || csvValidation.unmatchedSkus.length > 0) && (
-                <div style={{ borderRadius: 16, border: "1px solid rgba(234,179,8,0.2)", background: "rgba(234,179,8,0.04)", padding: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-                    <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.4, color: "#fbbf24" }}>Validación SKU</span>
-                    <button onClick={() => setCsvValidation(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.32)", display: "flex" }}><X size={14} /></button>
+                  {/* Big dropzone */}
+                  <div style={{ position: "relative", borderRadius: 20, padding: 28, background: batchDropActive ? "rgba(196,181,253,0.08)" : "rgba(15,15,18,0.6)", border: `1.5px dashed ${batchDropActive ? "#C4B5FD" : "rgba(196,181,253,0.18)"}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 22, textAlign: "center", transition: "all 0.15s" }}>
+                    <div style={{ width: 88, height: 88, borderRadius: 24, background: "radial-gradient(circle at 30% 30%,rgba(196,181,253,0.2),rgba(196,181,253,0.04))", border: "1px solid rgba(196,181,253,0.18)", display: "flex", alignItems: "center", justifyContent: "center", color: "#C4B5FD" }}>
+                      <Upload size={36} strokeWidth={1.75} />
+                    </div>
+                    <div style={{ maxWidth: 300 }}>
+                      <h2 style={{ fontFamily: '"Playfair Display",serif', fontSize: 24, fontWeight: 700, margin: 0, lineHeight: 1.2 }}>Soltá hasta 200 fotos acá</h2>
+                      <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13, margin: "10px 0 0", lineHeight: 1.5 }}>Aplicamos el mismo estilo a todas. Después podés ajustar producto por producto.</p>
+                    </div>
+                    <button onClick={() => batchInputRef.current?.click()}
+                      style={{ height: 46, padding: "0 20px", borderRadius: 12, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 13.5, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, boxShadow: "0 10px 28px -10px rgba(196,181,253,0.6),inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                      <Upload size={16} strokeWidth={1.75} /> Seleccionar archivos
+                    </button>
+                    <div style={{ position: "absolute", bottom: 20, fontSize: 11, color: "rgba(255,255,255,0.32)" }}>JPG · PNG · WebP · hasta 10 MB c/u</div>
                   </div>
-                  {csvValidation.unmatchedImages.length > 0 && (
-                    <div style={{ marginBottom: 10 }}>
-                      <p style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "rgba(251,191,36,0.7)", marginBottom: 6 }}>Imágenes sin SKU en planilla ({csvValidation.unmatchedImages.length})</p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {csvValidation.unmatchedImages.map(n => <span key={n} style={{ fontSize: 10, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 999, padding: "2px 8px", color: "rgba(251,191,36,0.8)", fontFamily: "ui-monospace,monospace" }}>{n}</span>)}
-                      </div>
+
+                  {/* CSV card */}
+                  <div style={{ borderRadius: 20, padding: 22, background: "rgba(11,11,13,0.5)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: 14 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(212,175,55,0.08)", border: "1px solid rgba(212,175,55,0.25)", display: "flex", alignItems: "center", justifyContent: "center", color: "#D4AF37" }}>
+                      <Layers size={20} strokeWidth={1.75} />
                     </div>
-                  )}
-                  {csvValidation.unmatchedSkus.length > 0 && (
                     <div>
-                      <p style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "rgba(251,146,60,0.7)", marginBottom: 6 }}>SKUs en planilla sin imagen ({csvValidation.unmatchedSkus.length})</p>
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {csvValidation.unmatchedSkus.map(s => <span key={s} style={{ fontSize: 10, background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)", borderRadius: 999, padding: "2px 8px", color: "rgba(251,146,60,0.8)", fontFamily: "ui-monospace,monospace" }}>{s}</span>)}
+                      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Importar planilla</div>
+                      <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>
+                        Subí un CSV o XLSX con <span style={{ fontFamily: "ui-monospace,monospace", fontSize: 11, color: "#C4B5FD" }}>sku · descripción · estilo</span>. Ideal si ya tenés el catálogo en una hoja.
                       </div>
                     </div>
-                  )}
+                    <div style={{ flex: 1 }} />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={downloadCsvTemplate}
+                        style={{ flex: 1, height: 36, borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 11.5, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                        <Download size={13} strokeWidth={1.75} /> CSV
+                      </button>
+                      <button onClick={downloadXlsxTemplate}
+                        style={{ flex: 1, height: 36, borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 11.5, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                        <Download size={13} strokeWidth={1.75} /> XLSX
+                      </button>
+                    </div>
+                    <button onClick={() => csvInputRef.current?.click()}
+                      style={{ height: 38, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.92)", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                      <Upload size={15} strokeWidth={1.75} /> Elegir planilla…
+                    </button>
+                  </div>
+
+                  {/* Drive card */}
+                  <div style={{ borderRadius: 20, padding: 22, background: "rgba(11,11,13,0.5)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", gap: 14 }}>
+                    <div style={{ width: 44, height: 44, borderRadius: 12, background: "rgba(74,222,128,0.08)", border: "1px solid rgba(74,222,128,0.25)", display: "flex", alignItems: "center", justifyContent: "center", color: "#4ADE80" }}>
+                      <Cloud size={20} strokeWidth={1.75} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6 }}>Desde Drive</div>
+                      <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.55)", lineHeight: 1.5 }}>Elegí una carpeta y las imágenes generadas vuelven a la misma carpeta, en una subcarpeta <em>/IA</em>.</div>
+                    </div>
+                    <div style={{ flex: 1 }} />
+                    <button onClick={handleConnectDrive}
+                      style={{ height: 38, borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: isGoogleAuth ? "rgba(74,222,128,0.08)" : "rgba(255,255,255,0.07)", color: isGoogleAuth ? "#4ADE80" : "rgba(255,255,255,0.92)", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                      <Cloud size={15} strokeWidth={1.75} /> {isGoogleAuth ? "Drive conectado" : "Conectar Drive"}
+                    </button>
+                  </div>
                 </div>
               )}
 
-              {/* Items list */}
-              {batchItems.length > 0 && (
-                <>
-                  <ScrollArea className="pr-2" style={{ maxHeight: 500 }}>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                      {batchItems.map((item, itemIdx) => (
+              {/* ── PROCESSING: progress strip + table ── */}
+              {batchItems.length > 0 && isProcessing && (
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>
+                  {/* Big fraction strip */}
+                  <div style={{ padding: 16, borderRadius: 16, background: "linear-gradient(135deg,rgba(196,181,253,0.08),rgba(196,181,253,0.02))", border: "1px solid rgba(196,181,253,0.18)", display: "flex", flexDirection: "column", gap: 10, flexShrink: 0 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                      <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
+                        <span style={{ fontFamily: '"Playfair Display",serif', fontSize: 28, fontWeight: 700, color: "#C4B5FD", fontVariantNumeric: "tabular-nums" }}>
+                          {batchItems.filter(i => i.status === "completed" || i.status === "error").length} / {batchItems.length}
+                        </span>
+                        <span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.55)" }}>
+                          {batchItems.filter(i => i.status === "completed").length} listas
+                          {batchItems.filter(i => i.status === "error").length > 0 && ` · ${batchItems.filter(i => i.status === "error").length} fallaron`}
+                          {batchItems.filter(i => i.status === "processing").length > 0 && ` · ${batchItems.filter(i => i.status === "processing").length} generando`}
+                          {batchItems.filter(i => i.status === "pending").length > 0 && ` · ${batchItems.filter(i => i.status === "pending").length} en cola`}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.32)", fontVariantNumeric: "tabular-nums" }}>
+                        {batchTimeInfo?.eta != null ? `~${formatTime(batchTimeInfo.eta)} restantes` : batchTimeInfo ? `${formatTime(batchTimeInfo.elapsed)} transcurridos` : "Iniciando…"}
+                      </span>
+                    </div>
+                    {/* Multicolor bar */}
+                    <div style={{ height: 6, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden", display: "flex" }}>
+                      <div style={{ width: `${(batchItems.filter(i => i.status === "completed").length / batchItems.length) * 100}%`, background: "linear-gradient(90deg,#C4B5FD,#D4AF37)", transition: "width 0.5s" }} />
+                      <div style={{ width: `${(batchItems.filter(i => i.status === "error").length / batchItems.length) * 100}%`, background: "rgba(248,113,113,0.5)" }} />
+                    </div>
+                  </div>
+
+                  {/* Processing table */}
+                  <div style={{ flex: 1, borderRadius: 16, overflow: "hidden", background: "rgba(11,11,13,0.6)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", minHeight: 0 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "44px 1fr 120px 1fr 80px", gap: 12, padding: "9px 14px", fontSize: 10.5, fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: 1.2, textTransform: "uppercase", background: "rgba(0,0,0,0.25)", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+                      <span />
+                      <span>Archivo</span>
+                      <span>Estilo</span>
+                      <span>Estado</span>
+                      <span style={{ textAlign: "right" }}>Acción</span>
+                    </div>
+                    <ScrollArea style={{ flex: 1 }}>
+                      {batchItems.map(item => {
+                        const SIcon = STYLES.find(s => s.id === selectedStyle)?.icon || Box;
+                        return (
+                          <div key={item.id} style={{ display: "grid", gridTemplateColumns: "44px 1fr 120px 1fr 80px", gap: 12, padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", alignItems: "center", background: item.status === "processing" ? "rgba(196,181,253,0.04)" : item.status === "error" ? "rgba(248,113,113,0.04)" : item.status === "completed" ? "rgba(74,222,128,0.025)" : "transparent" }}>
+                            <div style={{ position: "relative", width: 40, height: 40, borderRadius: 8, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }}>
+                              <img src={item.status === "completed" && item.result ? item.result : item.preview} className="w-full h-full object-cover" />
+                              {item.status === "completed" && <div style={{ position: "absolute", inset: 0, background: "rgba(74,222,128,0.18)", display: "flex", alignItems: "center", justifyContent: "center", color: "#4ADE80" }}><Check size={16} /></div>}
+                            </div>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.file.name}</div>
+                              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.32)", marginTop: 2 }}>{outputFormat.toUpperCase()} · {imageAspectRatio}</div>
+                            </div>
+                            <div>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(196,181,253,0.08)", color: "#C4B5FD", border: "1px solid rgba(196,181,253,0.25)", fontSize: 11, padding: "3px 8px", borderRadius: 999, fontWeight: 500 }}>
+                                <SIcon size={11} strokeWidth={1.75} /> {STYLES.find(s => s.id === selectedStyle)?.short}
+                              </span>
+                            </div>
+                            <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5 }}>
+                              {item.status === "completed" && <><span style={{ width: 16, height: 16, borderRadius: 999, background: "#4ADE80", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#062E15", flexShrink: 0 }}><Check size={10} /></span><span style={{ fontWeight: 600, color: "rgba(255,255,255,0.92)" }}>Listo</span></>}
+                              {item.status === "processing" && <><motion.span animate={{ rotate: 360 }} transition={{ duration: 1.2, repeat: Infinity, ease: "linear" }} style={{ width: 16, height: 16, borderRadius: 999, border: "2px solid rgba(255,255,255,0.06)", borderTopColor: "#C4B5FD", display: "inline-block", flexShrink: 0 }} /><span style={{ fontWeight: 600, color: "#C4B5FD" }}>Generando…</span></>}
+                              {item.status === "error" && <><span style={{ width: 16, height: 16, borderRadius: 999, background: "rgba(248,113,113,0.15)", border: "1px solid #F87171", display: "inline-flex", alignItems: "center", justifyContent: "center", color: "#F87171", flexShrink: 0 }}><X size={10} /></span><span style={{ fontWeight: 600, color: "#F87171" }}>Error</span></>}
+                              {item.status === "pending" && <><span style={{ width: 16, height: 16, borderRadius: 999, border: "1px solid rgba(255,255,255,0.12)", flexShrink: 0, display: "inline-block" }} /><span style={{ color: "rgba(255,255,255,0.32)" }}>En cola</span></>}
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
+                              {item.status === "completed" && (
+                                <button onClick={() => downloadBatchItem(item)} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <Download size={13} strokeWidth={1.75} />
+                                </button>
+                              )}
+                              {item.status === "error" && (
+                                <button onClick={() => setBatchItems(prev => prev.map(i => i.id === item.id ? { ...i, status: "pending" } : i))} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(248,113,113,0.3)", background: "rgba(248,113,113,0.06)", color: "#F87171", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <RefreshCw size={13} strokeWidth={1.75} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </ScrollArea>
+                  </div>
+                </div>
+              )}
+
+              {/* ── QUEUE: table with toolbar ── */}
+              {batchItems.length > 0 && !isProcessing && (
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRadius: 16, overflow: "hidden", background: "rgba(11,11,13,0.6)", border: "1px solid rgba(255,255,255,0.06)", minHeight: 0 }}>
+
+                  {/* Toolbar */}
+                  <div style={{ padding: "9px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{batchItems.length} producto{batchItems.length !== 1 ? "s" : ""}</span>
+                      {batchItems.some(i => i.status === "completed") && (
+                        <>
+                          <div style={{ width: 1, height: 14, background: "rgba(255,255,255,0.06)" }} />
+                          <button onClick={downloadAllBatch} style={{ background: "transparent", border: "none", color: "#C4B5FD", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                            <Download size={13} strokeWidth={1.75} /> Descargar completadas ({batchItems.filter(i => i.status === "completed").length})
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {/* CSV validation badge */}
+                    {csvValidation && (csvValidation.unmatchedImages.length > 0 || csvValidation.unmatchedSkus.length > 0) && (
+                      <button onClick={() => setCsvValidation(null)} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: 8, background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.25)", color: "#fbbf24", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                        {csvValidation.unmatchedImages.length + csvValidation.unmatchedSkus.length} sin match · ×
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Column headers */}
+                  <div style={{ display: "grid", gridTemplateColumns: "44px 1.4fr 1.6fr 120px 64px", gap: 12, padding: "8px 14px", fontSize: 10.5, fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: 1.2, textTransform: "uppercase", background: "rgba(0,0,0,0.15)", flexShrink: 0 }}>
+                    <span />
+                    <span>Archivo</span>
+                    <span>Descripción</span>
+                    <span>Estilo</span>
+                    <span />
+                  </div>
+
+                  {/* Rows */}
+                  <ScrollArea style={{ flex: 1 }}>
+                    {batchItems.map((item, itemIdx) => {
+                      const effectiveStyle = STYLES.find(s => s.id === selectedStyle);
+                      const upd = (patch: Partial<BatchItem>) => setBatchItems(prev => prev.map(i => i.id === item.id ? { ...i, ...patch } : i));
+                      return (
                         <div key={item.id}
                           draggable
                           onDragStart={() => { dragIndex.current = itemIdx; }}
                           onDragOver={e => { e.preventDefault(); setDragOverId(item.id); }}
                           onDrop={() => { if (dragIndex.current !== null) reorderBatch(dragIndex.current, itemIdx); dragIndex.current = null; setDragOverId(null); }}
                           onDragEnd={() => { dragIndex.current = null; setDragOverId(null); }}
-                          style={{ padding: 14, borderRadius: 14, border: `1px solid ${item.status === "completed" ? "rgba(74,222,128,0.4)" : item.status === "error" ? "rgba(248,113,113,0.4)" : dragOverId === item.id ? "rgba(196,181,253,0.5)" : "rgba(255,255,255,0.06)"}`, background: dragOverId === item.id ? "rgba(196,181,253,0.04)" : "rgba(0,0,0,0.25)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            <GripVertical size={16} style={{ color: "rgba(255,255,255,0.2)", flexShrink: 0, cursor: "grab" }} />
-                            <div style={{ width: 52, height: 52, borderRadius: 10, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)", cursor: item.status === "completed" ? "pointer" : "default" }}
-                              onClick={() => item.status === "completed" && item.result && setSelectedHistoryItem({ id: item.id, original: item.preview, result: item.result, style: selectedStyle, timestamp: Date.now(), fileName: item.file.name })}>
-                              <img src={item.status === "completed" && item.result ? item.result : item.preview} className="w-full h-full object-cover" />
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <p style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", margin: 0 }}>{item.file.name}</p>
-                              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginTop: 3, color: item.status === "completed" ? "#4ADE80" : item.status === "processing" ? "#C4B5FD" : item.status === "error" ? "#F87171" : "rgba(255,255,255,0.4)" }}>
-                                {item.status === "completed" ? "Listo" : item.status === "processing" ? "Procesando…" : item.status === "error" ? "Error" : "En espera"}
-                              </p>
-                            </div>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              {item.status === "completed" && (
-                                <button onClick={e => { e.stopPropagation(); downloadBatchItem(item); }}
-                                  style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.6)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                  <Download size={14} strokeWidth={1.75} />
-                                </button>
-                              )}
-                              <button onClick={e => { e.stopPropagation(); setBatchItems(prev => prev.filter(i => i.id !== item.id)); }}
-                                style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <X size={14} strokeWidth={1.75} />
-                              </button>
+                          style={{ display: "grid", gridTemplateColumns: "44px 1.4fr 1.6fr 120px 64px", gap: 12, padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", alignItems: "center", background: dragOverId === item.id ? "rgba(196,181,253,0.04)" : item.status === "completed" ? "rgba(74,222,128,0.025)" : item.status === "error" ? "rgba(248,113,113,0.04)" : "transparent" }}>
+                          <div style={{ position: "relative", width: 40, height: 40, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", cursor: "grab" }}
+                            onMouseDown={() => {}}>
+                            <img src={item.status === "completed" && item.result ? item.result : item.preview} className="w-full h-full object-cover" />
+                          </div>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.file.name}</div>
+                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.32)", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                <span style={{ width: 6, height: 6, borderRadius: 999, background: item.status === "completed" ? "#4ADE80" : item.status === "error" ? "#F87171" : "rgba(255,255,255,0.2)", display: "inline-block" }} />
+                                {item.status === "completed" ? "Listo" : item.status === "error" ? "Error" : "Pendiente"}
+                              </span>
                             </div>
                           </div>
-                          <div style={{ marginTop: 10 }}>{renderBatchItemInputs(item)}</div>
+                          <div>
+                            <input
+                              value={item.productDescription || ""}
+                              onChange={e => upd({ productDescription: e.target.value })}
+                              placeholder="Descripción del producto…"
+                              style={{ width: "100%", height: 32, padding: "0 10px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, fontSize: 12, color: "rgba(255,255,255,0.92)", outline: "none" }}
+                            />
+                          </div>
+                          <div>
+                            {effectiveStyle && (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(196,181,253,0.08)", color: "#C4B5FD", border: "1px solid rgba(196,181,253,0.18)", fontSize: 11, padding: "3px 8px", borderRadius: 999, fontWeight: 500 }}>
+                                <effectiveStyle.icon size={11} strokeWidth={1.75} /> {effectiveStyle.short}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
+                            {item.status === "completed" && (
+                              <button onClick={() => downloadBatchItem(item)} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <Download size={13} strokeWidth={1.75} />
+                              </button>
+                            )}
+                            <button onClick={() => setBatchItems(prev => prev.filter(i => i.id !== item.id))} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.06)", background: "transparent", color: "rgba(255,255,255,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <X size={13} strokeWidth={1.75} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </ScrollArea>
+
+                  {/* Add row footer */}
+                  <div style={{ padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.2)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+                    <button onClick={() => batchInputRef.current?.click()}
+                      style={{ background: "transparent", border: "1px dashed rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: 600, padding: "6px 12px", borderRadius: 8, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <Upload size={13} strokeWidth={1.75} /> Añadir más fotos
+                    </button>
+                    <span style={{ fontSize: 11.5, color: "rgba(255,255,255,0.32)" }}>{batchItems.length} archivo{batchItems.length !== 1 ? "s" : ""}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* ── Lote right panel (340px) ── */}
+            <aside style={{ width: 340, flexShrink: 0, borderLeft: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.5)", display: "flex", flexDirection: "column" }}>
+              <div style={{ flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }} className="custom-scrollbar">
+
+                {/* Estilo por defecto */}
+                <div>
+                  <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 10 }}>Estilo por defecto</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                    {STYLES.map(s => {
+                      const SIcon = s.icon;
+                      const active = selectedStyle === s.id;
+                      return (
+                        <button key={s.id} onClick={() => setSelectedStyle(s.id)}
+                          style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 10px", borderRadius: 10, background: active ? "rgba(196,181,253,0.08)" : "rgba(255,255,255,0.02)", border: `1px solid ${active ? "rgba(196,181,253,0.18)" : "rgba(255,255,255,0.06)"}`, color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", cursor: "pointer" }}>
+                          <SIcon size={14} strokeWidth={1.75} style={{ color: active ? "#C4B5FD" : "rgba(255,255,255,0.32)", flexShrink: 0 }} />
+                          <span style={{ fontSize: 12, fontWeight: 600 }}>{s.short}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Salida */}
+                <div>
+                  <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 10 }}>Salida</div>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                    {(["1:1", "9:16", "16:9"] as const).map((r, i) => {
+                      const dims = [{ w: 14, h: 14 }, { w: 10, h: 16 }, { w: 16, h: 10 }][i];
+                      return (
+                        <button key={r} onClick={() => setImageAspectRatio(r)}
+                          style={{ flex: 1, height: 46, borderRadius: 9, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, background: imageAspectRatio === r ? "rgba(196,181,253,0.08)" : "transparent", border: `1px solid ${imageAspectRatio === r ? "rgba(196,181,253,0.18)" : "rgba(255,255,255,0.06)"}`, cursor: "pointer" }}>
+                          <div style={{ width: dims.w, height: dims.h, border: `1.5px solid ${imageAspectRatio === r ? "#C4B5FD" : "rgba(255,255,255,0.32)"}`, borderRadius: 2 }} />
+                          <span style={{ fontSize: 10.5, color: imageAspectRatio === r ? "#C4B5FD" : "rgba(255,255,255,0.32)", fontWeight: 600 }}>{r}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    {([{ f: "png", l: "PNG", h: "Nítido" }, { f: "webp", l: "WebP", h: "Óptimo" }, { f: "jpeg", l: "JPEG", h: "Compat." }] as { f: OutputFormat, l: string, h: string }[]).map(o => (
+                      <button key={o.f} onClick={() => setOutputFormat(o.f)}
+                        style={{ flex: 1, padding: "7px 0", borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", background: outputFormat === o.f ? "rgba(255,255,255,0.06)" : "transparent", border: `1px solid ${outputFormat === o.f ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)"}`, cursor: "pointer" }}>
+                        <span style={{ fontSize: 11.5, fontWeight: 600, color: outputFormat === o.f ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)" }}>{o.l}</span>
+                        <span style={{ fontSize: 9.5, color: "rgba(255,255,255,0.32)", marginTop: 1 }}>{o.h}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Destino */}
+                <div>
+                  <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 10 }}>Destino</div>
+                  <div style={{ padding: 12, borderRadius: 10, border: "1px solid rgba(255,255,255,0.06)", background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", gap: 10 }}>
+                    <Cloud size={16} strokeWidth={1.75} style={{ color: isGoogleAuth ? "#4ADE80" : "rgba(255,255,255,0.32)", flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12.5, fontWeight: 600 }}>{isGoogleAuth ? "Drive · /IA" : "Solo descarga local"}</div>
+                      <div style={{ fontSize: 11, color: isGoogleAuth ? "#4ADE80" : "rgba(255,255,255,0.32)", marginTop: 2 }}>
+                        {isGoogleAuth ? "Auto-guardado activado" : "Conectá Drive para auto-guardar"}
+                      </div>
+                    </div>
+                    {!isGoogleAuth && (
+                      <button onClick={handleConnectDrive} style={{ height: 28, padding: "0 10px", borderRadius: 8, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.7)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                        Conectar
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Resumen (solo con items) */}
+                {batchItems.length > 0 && (
+                  <div>
+                    <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 10 }}>Resumen</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {[
+                        { l: "Imágenes a generar", v: `${batchItems.filter(i => i.status !== "completed").length}` },
+                        { l: "Completadas", v: `${batchItems.filter(i => i.status === "completed").length}` },
+                        { l: "Tiempo estimado", v: batchItems.filter(i => i.status !== "completed").length > 0 ? `~${Math.ceil(batchItems.filter(i => i.status !== "completed").length * 4 / 60)} min` : "—", accent: "#C4B5FD" },
+                      ].map(row => (
+                        <div key={row.l} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                          <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{row.l}</span>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: row.accent || "rgba(255,255,255,0.92)", fontVariantNumeric: "tabular-nums" }}>{row.v}</span>
                         </div>
                       ))}
                     </div>
-                  </ScrollArea>
-
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {batchItems.some(i => i.status === "completed") && (
-                      <button onClick={downloadAllBatch}
-                        style={{ height: 44, borderRadius: 12, border: "1px solid rgba(196,181,253,0.2)", background: "transparent", color: "#C4B5FD", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-                        <Download size={15} strokeWidth={1.75} /> Descargar Lote
-                      </button>
-                    )}
-                    {isProcessing && (
-                      <div>
-                        <Progress value={batchProgress} className="h-1.5" />
-                        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 10, color: "rgba(255,255,255,0.32)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
-                          <span>{batchTimeInfo ? `Transcurrido: ${formatTime(batchTimeInfo.elapsed)}` : "Iniciando…"}</span>
-                          <span style={{ color: "#C4B5FD" }}>{batchTimeInfo?.eta != null ? `~${formatTime(batchTimeInfo.eta)} restantes` : "Calculando…"}</span>
-                        </div>
-                      </div>
-                    )}
-                    <button onClick={runBatch}
-                      disabled={isProcessing || batchItems.every(i => i.status === "completed") || !isFormValid() || batchItems.length === 0}
-                      style={{ width: "100%", height: 54, borderRadius: 12, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 10px 28px -10px rgba(196,181,253,0.6),inset 0 1px 0 rgba(255,255,255,0.3)", opacity: (isProcessing || batchItems.every(i => i.status === "completed") || !isFormValid() || batchItems.length === 0) ? 0.4 : 1 }}>
-                      {isProcessing ? <><RefreshCw size={17} className="animate-spin" /> Procesando ({Math.round(batchProgress)}%)…</> : <><Sparkles size={17} strokeWidth={1.75} /> Generar {batchItems.length} imagen{batchItems.length !== 1 ? "es" : ""}</>}
-                    </button>
                   </div>
-                </>
-              )}
+                )}
+
+                {/* CSV validation (compact) */}
+                {csvValidation && (csvValidation.unmatchedImages.length > 0 || csvValidation.unmatchedSkus.length > 0) && (
+                  <div style={{ borderRadius: 12, border: "1px solid rgba(234,179,8,0.2)", background: "rgba(234,179,8,0.04)", padding: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                      <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.2, color: "#fbbf24" }}>Validación SKU</span>
+                      <button onClick={() => setCsvValidation(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.32)" }}><X size={13} /></button>
+                    </div>
+                    {csvValidation.unmatchedImages.length > 0 && (
+                      <p style={{ fontSize: 11, color: "rgba(251,191,36,0.7)", margin: "0 0 4px" }}>{csvValidation.unmatchedImages.length} imagen{csvValidation.unmatchedImages.length !== 1 ? "es" : ""} sin SKU en planilla</p>
+                    )}
+                    {csvValidation.unmatchedSkus.length > 0 && (
+                      <p style={{ fontSize: 11, color: "rgba(251,146,60,0.7)", margin: 0 }}>{csvValidation.unmatchedSkus.length} SKU{csvValidation.unmatchedSkus.length !== 1 ? "s" : ""} en planilla sin imagen</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer CTA */}
+              <div style={{ padding: 16, borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(5,5,5,0.7)", display: "flex", flexDirection: "column", gap: 8 }}>
+                {batchItems.some(i => i.status === "completed") && !isProcessing && (
+                  <button onClick={downloadAllBatch}
+                    style={{ height: 42, borderRadius: 12, border: "1px solid rgba(196,181,253,0.2)", background: "transparent", color: "#C4B5FD", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                    <Download size={15} strokeWidth={1.75} /> Descargar completadas ({batchItems.filter(i => i.status === "completed").length})
+                  </button>
+                )}
+                <button onClick={runBatch}
+                  disabled={isProcessing || batchItems.every(i => i.status === "completed") || batchItems.length === 0}
+                  style={{ width: "100%", height: 54, borderRadius: 12, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 14, fontWeight: 700, cursor: (batchItems.length === 0 || batchItems.every(i => i.status === "completed")) ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 10px 28px -10px rgba(196,181,253,0.6),inset 0 1px 0 rgba(255,255,255,0.3)", opacity: (isProcessing || batchItems.every(i => i.status === "completed") || batchItems.length === 0) ? 0.4 : 1 }}>
+                  {isProcessing ? <><RefreshCw size={17} className="animate-spin" /> Procesando…</> : batchItems.length === 0 ? <><Sparkles size={17} strokeWidth={1.75} /> Generar lote</> : <><Sparkles size={17} strokeWidth={1.75} /> Generar {batchItems.filter(i => i.status !== "completed").length} imagen{batchItems.filter(i => i.status !== "completed").length !== 1 ? "es" : ""}</>}
+                </button>
+                {batchItems.length === 0 && <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.32)", textAlign: "center" }}>Subí al menos 1 imagen para activar</div>}
+              </div>
+            </aside>
+
             </div>
           )}
 
