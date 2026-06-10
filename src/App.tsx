@@ -1443,10 +1443,10 @@ export default function App() {
                   </div>
 
                   {/* Column headers */}
-                  <div style={{ display: "grid", gridTemplateColumns: "44px 1.4fr 1.6fr 120px 64px", gap: 12, padding: "8px 14px", fontSize: 10.5, fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: 1.2, textTransform: "uppercase", background: "rgba(0,0,0,0.15)", flexShrink: 0 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "44px 1.3fr 1.8fr 110px 64px", gap: 10, padding: "8px 14px", fontSize: 10.5, fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: 1.2, textTransform: "uppercase", background: "rgba(0,0,0,0.15)", flexShrink: 0 }}>
                     <span />
                     <span>Archivo</span>
-                    <span>Descripción</span>
+                    <span>{selectedStyle === "Technical" ? "Dimensiones" : selectedStyle === "Infographic" ? "Título y puntos" : "Descripción"}</span>
                     <span>Estilo</span>
                     <span />
                   </div>
@@ -1456,6 +1456,39 @@ export default function App() {
                     {batchItems.map((item, itemIdx) => {
                       const effectiveStyle = STYLES.find(s => s.id === selectedStyle);
                       const upd = (patch: Partial<BatchItem>) => setBatchItems(prev => prev.map(i => i.id === item.id ? { ...i, ...patch } : i));
+                      const iS = { width: "100%", height: 30, padding: "0 8px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 7, fontSize: 11.5, color: "rgba(255,255,255,0.92)", outline: "none" } as React.CSSProperties;
+                      const iSErr = { ...iS, borderColor: "rgba(248,113,113,0.4)" };
+
+                      const detailsCell = selectedStyle === "Technical" ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 5 }}>
+                            {([["Ancho", "width"], ["Alto", "height"], ["Prof.", "depth"]] as [string, keyof BatchItem][]).map(([label, key]) => (
+                              <div key={key}>
+                                <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.35)", marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.5 }}>{label}</div>
+                                <div style={{ position: "relative" }}>
+                                  <input value={(item[key] as string) || ""} onChange={e => upd({ [key]: e.target.value })} placeholder="0"
+                                    style={!(item[key] as string)?.trim() ? { ...iSErr, paddingRight: 24 } : { ...iS, paddingRight: 24 }} />
+                                  <span style={{ position: "absolute", right: 6, top: "50%", transform: "translateY(-50%)", fontSize: 10, color: "rgba(255,255,255,0.3)", pointerEvents: "none" }}>cm</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <input value={item.productDescription || ""} onChange={e => upd({ productDescription: e.target.value })}
+                            placeholder="Descripción (opcional)" style={iS} />
+                        </div>
+                      ) : selectedStyle === "Infographic" ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                          <input value={item.infoTitle || ""} onChange={e => upd({ infoTitle: e.target.value })}
+                            placeholder="Título *" style={!item.infoTitle?.trim() ? iSErr : iS} />
+                          <textarea value={item.infoFeatures || ""} onChange={e => upd({ infoFeatures: e.target.value })}
+                            placeholder={"Punto 1\nPunto 2\nPunto 3"} rows={3}
+                            style={{ ...(!item.infoFeatures?.trim() ? iSErr : iS), height: 56, padding: "5px 8px", resize: "none" as const, lineHeight: 1.4 }} />
+                        </div>
+                      ) : (
+                        <input value={item.productDescription || ""} onChange={e => upd({ productDescription: e.target.value })}
+                          placeholder="Descripción del producto…" style={iS} />
+                      );
+
                       return (
                         <div key={item.id}
                           draggable
@@ -1463,36 +1496,26 @@ export default function App() {
                           onDragOver={e => { e.preventDefault(); setDragOverId(item.id); }}
                           onDrop={() => { if (dragIndex.current !== null) reorderBatch(dragIndex.current, itemIdx); dragIndex.current = null; setDragOverId(null); }}
                           onDragEnd={() => { dragIndex.current = null; setDragOverId(null); }}
-                          style={{ display: "grid", gridTemplateColumns: "44px 1.4fr 1.6fr 120px 64px", gap: 12, padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", alignItems: "center", background: dragOverId === item.id ? "rgba(196,181,253,0.04)" : item.status === "completed" ? "rgba(74,222,128,0.025)" : item.status === "error" ? "rgba(248,113,113,0.04)" : "transparent" }}>
-                          <div style={{ position: "relative", width: 40, height: 40, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", cursor: "grab" }}
-                            onMouseDown={() => {}}>
+                          style={{ display: "grid", gridTemplateColumns: "44px 1.3fr 1.8fr 110px 64px", gap: 10, padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", alignItems: "start", background: dragOverId === item.id ? "rgba(196,181,253,0.04)" : item.status === "completed" ? "rgba(74,222,128,0.025)" : item.status === "error" ? "rgba(248,113,113,0.04)" : "transparent" }}>
+                          <div style={{ width: 40, height: 40, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", cursor: "grab", flexShrink: 0, marginTop: 2 }}>
                             <img src={item.status === "completed" && item.result ? item.result : item.preview} className="w-full h-full object-cover" />
                           </div>
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.file.name}</div>
-                            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.32)", marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                                <span style={{ width: 6, height: 6, borderRadius: 999, background: item.status === "completed" ? "#4ADE80" : item.status === "error" ? "#F87171" : "rgba(255,255,255,0.2)", display: "inline-block" }} />
-                                {item.status === "completed" ? "Listo" : item.status === "error" ? "Error" : "Pendiente"}
-                              </span>
+                          <div style={{ minWidth: 0, paddingTop: 2 }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.file.name}</div>
+                            <div style={{ fontSize: 10.5, color: item.status === "completed" ? "#4ADE80" : item.status === "error" ? "#F87171" : "rgba(255,255,255,0.32)", marginTop: 3, display: "flex", alignItems: "center", gap: 4 }}>
+                              <span style={{ width: 5, height: 5, borderRadius: 999, background: "currentColor", display: "inline-block", flexShrink: 0 }} />
+                              {item.status === "completed" ? "Listo" : item.status === "error" ? "Error" : "Pendiente"}
                             </div>
                           </div>
-                          <div>
-                            <input
-                              value={item.productDescription || ""}
-                              onChange={e => upd({ productDescription: e.target.value })}
-                              placeholder="Descripción del producto…"
-                              style={{ width: "100%", height: 32, padding: "0 10px", background: "rgba(0,0,0,0.3)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, fontSize: 12, color: "rgba(255,255,255,0.92)", outline: "none" }}
-                            />
-                          </div>
-                          <div>
+                          <div>{detailsCell}</div>
+                          <div style={{ paddingTop: 4 }}>
                             {effectiveStyle && (
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(196,181,253,0.08)", color: "#C4B5FD", border: "1px solid rgba(196,181,253,0.18)", fontSize: 11, padding: "3px 8px", borderRadius: 999, fontWeight: 500 }}>
-                                <effectiveStyle.icon size={11} strokeWidth={1.75} /> {effectiveStyle.short}
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(196,181,253,0.08)", color: "#C4B5FD", border: "1px solid rgba(196,181,253,0.18)", fontSize: 10.5, padding: "3px 7px", borderRadius: 999, fontWeight: 500, whiteSpace: "nowrap" }}>
+                                <effectiveStyle.icon size={10} strokeWidth={1.75} /> {effectiveStyle.short}
                               </span>
                             )}
                           </div>
-                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
+                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, paddingTop: 2 }}>
                             {item.status === "completed" && (
                               <button onClick={() => downloadBatchItem(item)} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 <Download size={13} strokeWidth={1.75} />
