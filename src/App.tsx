@@ -4,24 +4,25 @@ import { motion, AnimatePresence } from "motion/react";
 import {
   Upload, Sparkles, Image as ImageIcon, Download, RefreshCw, Camera,
   Cloud, Trash2, History, X, Check, Eye, Maximize,
-  ChevronLeft, ChevronRight, Video, GripVertical
+  ChevronLeft, ChevronRight, GripVertical,
+  Box, Layers, Ruler, Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Toaster } from "@/components/ui/sonner";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { transformImage, analyzeProduct, generateVideo360 } from "@/src/services/gemini";
+import { transformImage } from "@/src/services/gemini";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-type Style = "Ecom" | "LifestyleNoHuman" | "Lifestyle" | "Technical" | "Infographic" | "Video360";
+type Style = "Ecom" | "LifestyleNoHuman" | "Lifestyle" | "Technical" | "Infographic";
+type ActiveTab = "crear" | "lote" | "historial";
 
 interface HistoryItem {
   id: string;
@@ -52,13 +53,12 @@ interface BatchItem {
 }
 
 // ─── Style definitions ────────────────────────────────────────────────────────
-const STYLES: { id: Style; label: string; desc: string }[] = [
-  { id: "Ecom",            label: "1. Producto",       desc: "Fondo blanco de estudio" },
-  { id: "LifestyleNoHuman",label: "2. Portada ML",     desc: "Lifestyle sin personas" },
-  { id: "Lifestyle",       label: "3. Lifestyle",      desc: "Ambiente con personas" },
-  { id: "Technical",       label: "4. Medidas",        desc: "Dimensiones del producto" },
-  { id: "Infographic",     label: "5. Infografía",     desc: "Características visuales" },
-  { id: "Video360",        label: "6. Video 360°",     desc: "Rotación del producto" },
+const STYLES: { id: Style; label: string; short: string; icon: React.ElementType; desc: string }[] = [
+  { id: "Ecom",             label: "Producto",   short: "Producto",   icon: Box,       desc: "Fondo blanco de estudio" },
+  { id: "LifestyleNoHuman", label: "Portada ML", short: "Portada",    icon: ImageIcon, desc: "Lifestyle sin personas" },
+  { id: "Lifestyle",        label: "Lifestyle",  short: "Lifestyle",  icon: Sparkles,  desc: "Ambiente con personas" },
+  { id: "Technical",        label: "Medidas",    short: "Medidas",    icon: Ruler,     desc: "Dimensiones del producto" },
+  { id: "Infographic",      label: "Infografía", short: "Infografía", icon: Layers,    desc: "Características visuales" },
 ];
 
 // ─── Comparison Slider ───────────────────────────────────────────────────────
@@ -83,15 +83,10 @@ const ComparisonSlider = ({ before, after }: { before: string; after: string }) 
       onTouchMove={e => calc(e.touches[0].clientX)}
       onTouchEnd={() => { dragging.current = false; }}
     >
-      {/* After — resultado (capa base) */}
-      <img src={after} className="absolute inset-0 w-full h-full object-contain p-4 md:p-8" referrerPolicy="no-referrer" />
-
-      {/* Before — original (recortado dinámicamente) */}
+      <img src={after} className="absolute inset-0 w-full h-full object-contain p-8" referrerPolicy="no-referrer" />
       <div className="absolute inset-0" style={{ clipPath: `inset(0 ${100 - pos}% 0 0)` }}>
-        <img src={before} className="w-full h-full object-contain p-4 md:p-8 opacity-90" />
+        <img src={before} className="w-full h-full object-contain p-8 opacity-90" />
       </div>
-
-      {/* Línea + handle */}
       <div className="absolute top-0 bottom-0 z-10 flex items-center justify-center"
         style={{ left: `${pos}%`, transform: "translateX(-50%)" }}>
         <div className="absolute inset-y-0 w-[2px] bg-white/80 shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
@@ -104,8 +99,6 @@ const ComparisonSlider = ({ before, after }: { before: string; after: string }) 
           <ChevronRight className="w-3 h-3 text-black absolute right-0.5" />
         </div>
       </div>
-
-      {/* Labels */}
       <div className="absolute top-3 left-3 z-10 bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-full pointer-events-none">
         <span className="text-[9px] text-white/60 uppercase font-black tracking-widest">Original</span>
       </div>
@@ -120,12 +113,11 @@ const ComparisonSlider = ({ before, after }: { before: string; after: string }) 
 type OutputFormat = "png" | "webp" | "jpeg";
 
 const DEFAULT_FORMAT: Record<Style, OutputFormat> = {
-  Ecom:            "png",
-  LifestyleNoHuman:"webp",
-  Lifestyle:       "webp",
-  Technical:       "png",
-  Infographic:     "png",
-  Video360:        "webp", // no aplica pero necesita valor
+  Ecom:             "png",
+  LifestyleNoHuman: "webp",
+  Lifestyle:        "webp",
+  Technical:        "png",
+  Infographic:      "png",
 };
 
 const convertToFormat = (base64DataUrl: string, format: OutputFormat, quality = 0.9): Promise<string> =>
@@ -179,6 +171,7 @@ export default function App() {
   const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "16:9" | "9:16">("1:1");
   const [outputFormat, setOutputFormat] = useState<OutputFormat>("png");
   const [showComparison, setShowComparison] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("crear");
 
   // Style-specific inputs
   const [width, setWidth]               = useState("");
@@ -190,13 +183,6 @@ export default function App() {
   const [infoStyle, setInfoStyle]       = useState<"Pop" | "Elegante">("Pop");
   const [lifestylePrompt, setLifestylePrompt]       = useState("");
   const [productDescription, setProductDescription] = useState("");
-
-  // Video 360
-  const [video360Result, setVideo360Result] = useState<string | null>(null);
-  const [video360Angles, setVideo360Angles] = useState<{
-    frente: BatchItem | null; dorso: BatchItem | null;
-    lateral1: BatchItem | null; lateral2: BatchItem | null;
-  }>({ frente: null, dorso: null, lateral1: null, lateral2: null });
 
   // Batch
   const [batchItems, setBatchItems]       = useState<BatchItem[]>([]);
@@ -246,7 +232,7 @@ export default function App() {
     });
   };
 
-  // ── Persist history (sin `original` para no reventar localStorage) ─────────
+  // ── Persist history ────────────────────────────────────────────────────────
   useEffect(() => {
     try {
       const toSave = history.slice(0, 50).map(({ original, ...rest }) => rest);
@@ -257,7 +243,6 @@ export default function App() {
   // ── Auth check ─────────────────────────────────────────────────────────────
   useEffect(() => {
     fetch("/api/auth/status").then(r => r.json()).then(d => setIsGoogleAuth(d.isAuthenticated)).catch(() => {});
-
     const onMsg = (e: MessageEvent) => {
       if (e.data?.type === "OAUTH_AUTH_SUCCESS") { setIsGoogleAuth(true); toast.success("Conectado a Google Drive"); }
     };
@@ -312,7 +297,6 @@ export default function App() {
     return () => window.removeEventListener("paste", handlePaste);
   }, [handlePaste]);
 
-
   // ── File processing ───────────────────────────────────────────────────────
   const processFile = async (file: File) => {
     if (file.type && !file.type.startsWith("image/")) { toast.error("Por favor, sube una imagen válida."); return; }
@@ -331,6 +315,34 @@ export default function App() {
   };
 
   // ── Batch file handler ────────────────────────────────────────────────────
+  const applyCSVRows = (items: BatchItem[], rows: Record<string, string>[]) => {
+    let matched = 0;
+    const updated = items.map(item => {
+      const sku = item.file.name.replace(/\.[^/.]+$/, "");
+      const row = rows.find(r => r["sku"] === sku);
+      if (!row) return item;
+      const get = (col: string) => (row[col] || "").trim();
+      matched++;
+      return {
+        ...item,
+        infoTitle:          get("titulo")                               || item.infoTitle,
+        infoFeatures:       get("caracteristicas").replace(/\|/g, "\n") || item.infoFeatures,
+        infoStyle:          (get("estilo") as "Pop" | "Elegante")       || item.infoStyle,
+        infoScenario:       get("escenario")                            || item.infoScenario,
+        width:              get("ancho")                                || item.width,
+        height:             get("alto")                                 || item.height,
+        depth:              get("profundo")                             || item.depth,
+        productDescription: get("descripcion_producto")                 || item.productDescription,
+        lifestylePrompt:    get("entorno")                              || item.lifestylePrompt,
+      };
+    });
+    const imageSkus   = items.map(i => i.file.name.replace(/\.[^/.]+$/, ""));
+    const csvSkus     = rows.map(r => r["sku"]).filter(Boolean);
+    const unmatchedImages = imageSkus.filter(s => !csvSkus.includes(s));
+    const unmatchedSkus   = csvSkus.filter(s => !imageSkus.includes(s));
+    return { updated, matched, unmatchedImages, unmatchedSkus };
+  };
+
   const addBatchFiles = (files: File[]) => {
     const newItems: BatchItem[] = files.map(file => ({
       id: Math.random().toString(36).substr(2, 9), file,
@@ -359,7 +371,6 @@ export default function App() {
     if (batchCameraInputRef.current) batchCameraInputRef.current.value = "";
   };
 
-  // ── Batch drag & drop upload ─────────────────────────────────────────────
   const handleBatchDrop = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setBatchDropActive(false);
@@ -368,7 +379,7 @@ export default function App() {
     addBatchFiles(files);
   };
 
-  // ── Template download (CSV + XLSX) ───────────────────────────────────────
+  // ── Template download ─────────────────────────────────────────────────────
   const getTemplateRows = (): { headers: string[]; example: string[] } => {
     if (selectedStyle === "Technical") return {
       headers: ["sku", "descripcion_producto", "ancho", "alto", "profundo"],
@@ -402,37 +413,7 @@ export default function App() {
     XLSX.writeFile(wb, "plantilla_lote.xlsx");
   };
 
-  // ── CSV import & auto-match by SKU ────────────────────────────────────────
-  const applyCSVRows = (items: BatchItem[], rows: Record<string, string>[]) => {
-    let matched = 0;
-    const matchedSkus = new Set<string>();
-    const updated = items.map(item => {
-      const sku = item.file.name.replace(/\.[^/.]+$/, "");
-      const row = rows.find(r => r["sku"] === sku);
-      if (!row) return item;
-      const get = (col: string) => (row[col] || "").trim();
-      matched++;
-      matchedSkus.add(sku);
-      return {
-        ...item,
-        infoTitle:          get("titulo")                              || item.infoTitle,
-        infoFeatures:       get("caracteristicas").replace(/\|/g, "\n") || item.infoFeatures,
-        infoStyle:          (get("estilo") as "Pop" | "Elegante")      || item.infoStyle,
-        infoScenario:       get("escenario")                           || item.infoScenario,
-        width:              get("ancho")                               || item.width,
-        height:             get("alto")                                || item.height,
-        depth:              get("profundo")                            || item.depth,
-        productDescription: get("descripcion_producto")                || item.productDescription,
-        lifestylePrompt:    get("entorno")                             || item.lifestylePrompt,
-      };
-    });
-    const imageSkus   = items.map(i => i.file.name.replace(/\.[^/.]+$/, ""));
-    const csvSkus     = rows.map(r => r["sku"]).filter(Boolean);
-    const unmatchedImages = imageSkus.filter(s => !csvSkus.includes(s));
-    const unmatchedSkus   = csvSkus.filter(s => !imageSkus.includes(s));
-    return { updated, matched, unmatchedImages, unmatchedSkus };
-  };
-
+  // ── CSV / XLSX import ─────────────────────────────────────────────────────
   const processSpreadsheetRows = (rows: Record<string, string>[]) => {
     if (rows.length === 0) { toast.error("La planilla no tiene datos."); return; }
     setCsvParsedRows(rows);
@@ -487,7 +468,6 @@ export default function App() {
 
   // ── Form validation ───────────────────────────────────────────────────────
   const isFormValid = () => {
-    if (selectedStyle === "Video360") return Object.values(video360Angles).some(Boolean);
     if (isBatchMode) {
       if (!batchItems.length) return false;
       return batchItems.every(item => {
@@ -590,33 +570,6 @@ export default function App() {
     toast.success("Procesamiento por lotes finalizado");
   };
 
-  // ── Video 360 ─────────────────────────────────────────────────────────────
-  const handleGenerateVideo360 = async () => {
-    if (!Object.values(video360Angles).some(Boolean)) return;
-    setIsProcessing(true); setBatchProgress(0); setVideo360Result(null);
-    try {
-      const ordered = [video360Angles.frente, video360Angles.lateral1, video360Angles.dorso, video360Angles.lateral2].filter(Boolean) as BatchItem[];
-      const processed: { base64: string; mimeType: string }[] = [];
-      for (const item of ordered) {
-        const b64 = item.preview.split(",")[1];
-        const url = await transformImage(b64, "image/jpeg", "Ecom", "", { productDescription });
-        processed.push({ base64: url.split(",")[1], mimeType: "image/png" });
-        setBatchProgress(processed.length / (ordered.length + 2) * 100);
-      }
-      const desc = await analyzeProduct(processed, productDescription);
-      setBatchProgress(80);
-      const videoObjectUrl = await generateVideo360(desc, processed);
-      setVideo360Result(videoObjectUrl);
-      toast.success("¡Video 360° generado con éxito!");
-      setBatchProgress(100);
-    } catch (e) {
-      console.error(e);
-      toast.error("Error al generar el video 360°.");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   // ── Drive ─────────────────────────────────────────────────────────────────
   const handleConnectDrive = async () => {
     const popup = window.open("", "oauth_popup", "width=600,height=700");
@@ -659,119 +612,30 @@ export default function App() {
 
   const onDrop = useCallback((e: DragEvent) => { e.preventDefault(); const f = e.dataTransfer.files?.[0]; if (f) processFile(f); }, []);
 
-  // ── Conditional inputs (single mode) ──────────────────────────────────────
-  const renderSingleInputs = () => (
-    <>
-      <div className="space-y-2 pb-4">
-        <Label className="text-[10px] uppercase text-brand-violet/60">Descripción del Producto (Opcional)</Label>
-        <Input placeholder="Ej: Zapatillas deportivas rojas Nike" value={productDescription} onChange={e => setProductDescription(e.target.value)} className="input-premium h-10 text-xs" />
-        <p className="text-[9px] text-white/30 uppercase tracking-tighter">Ayuda a la IA a identificar el producto con precisión</p>
-      </div>
-      <AnimatePresence mode="wait">
-      {(selectedStyle === "Lifestyle" || selectedStyle === "LifestyleNoHuman") && (
-        <motion.div key="lifestyle" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-2 pb-4">
-          <Label className="text-[10px] uppercase text-brand-violet/60">
-            {selectedStyle === "LifestyleNoHuman" ? "Entorno para la Portada (Opcional)" : "Entorno Preferido (Opcional)"}
-          </Label>
-          <Input
-            placeholder={selectedStyle === "LifestyleNoHuman" ? "Ej: Cocina moderna, escritorio minimalista..." : "Ej: En un parque, en una cocina..."}
-            value={lifestylePrompt} onChange={e => setLifestylePrompt(e.target.value)} className="input-premium h-10 text-xs"
-          />
-          <p className="text-[9px] text-white/30 uppercase tracking-tighter">
-            {selectedStyle === "LifestyleNoHuman" ? "Estilo portada recomendada por MercadoLibre" : "Describe dónde quieres ver el producto"}
-          </p>
-        </motion.div>
-      )}
-      {selectedStyle === "Technical" && (
-        <motion.div key="technical" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-3 pb-4">
-          <Label className="text-[10px] uppercase text-brand-violet/60">Medidas del Producto <span className="text-red-500">*</span></Label>
-          <div className="grid grid-cols-3 gap-2">
-            {[["Ancho (cm)", width, setWidth], ["Alto (cm)", height, setHeight], ["Profundo (cm)", depth, setDepth]].map(([label, val, setter]) => (
-              <div key={label as string} className="space-y-1">
-                <Label className="text-[9px] uppercase text-white/30">{label as string}</Label>
-                <Input placeholder={label as string} value={val as string} onChange={e => (setter as (v: string) => void)(e.target.value)}
-                  className={cn("input-premium h-10 text-[10px]", !(val as string).trim() && "border-red-500/50")} />
-              </div>
-            ))}
-          </div>
-        </motion.div>
-      )}
-      {selectedStyle === "Infographic" && (
-        <motion.div key="infographic" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="space-y-4 pb-4">
-          <div className="space-y-2">
-            <Label className="text-[10px] uppercase text-brand-violet/60">Estilo Visual</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {(["Pop", "Elegante"] as const).map(s => (
-                <Button key={s} onClick={() => setInfoStyle(s)}
-                  className={cn("h-9 text-[10px] font-black uppercase tracking-widest border active:scale-95",
-                    infoStyle === s ? "bg-white text-black border-white" : "bg-transparent text-white/60 border-brand-violet/20 hover:bg-brand-violet/10")}>
-                  {s === "Pop" ? "Pop 🎨" : "Elegante ✨"}
-                </Button>
-              ))}
-            </div>
-            <p className="text-[9px] text-white/30 uppercase tracking-tighter">
-              {infoStyle === "Pop" ? "Colores vibrantes y llamativos" : "Paleta sofisticada derivada del producto"}
-            </p>
-          </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] uppercase text-brand-violet/60">Título <span className="text-red-500">*</span></Label>
-            <Input placeholder="Ej: El mejor del mercado" value={infoTitle} onChange={e => setInfoTitle(e.target.value)}
-              className={cn("input-premium h-10 text-xs", !infoTitle.trim() && "border-red-500/50")} />
-          </div>
-          <div className="space-y-2">
-            <Label className="text-[10px] uppercase text-brand-violet/60">Características <span className="text-red-500">*</span></Label>
-            <Textarea placeholder={"Duradero\nElegante\nEconómico"} value={infoFeatures} onChange={e => setInfoFeatures(e.target.value)}
-              className={cn("input-premium text-xs h-24", !infoFeatures.trim() && "border-red-500/50")} />
-            <p className="text-[9px] text-white/30 uppercase tracking-tighter">Una característica por línea</p>
-          </div>
-          {infoStyle === "Elegante" && (
-            <div className="space-y-2">
-              <Label className="text-[10px] uppercase text-brand-violet/60">Escenario (Opcional)</Label>
-              <Input placeholder="Ej: Mesa de madera con taza humeante y cuchara" value={infoScenario}
-                onChange={e => setInfoScenario(e.target.value)} className="input-premium h-10 text-xs" />
-              <p className="text-[9px] text-white/30 uppercase tracking-tighter">Describe la escena donde se usa el producto</p>
-            </div>
-          )}
-        </motion.div>
-      )}
-    </AnimatePresence>
-    </>
-  );
-
-  // ── Batch item inputs (sin duplicado de Infografía) ───────────────────────
+  // ── Batch item inputs ─────────────────────────────────────────────────────
   const renderBatchItemInputs = (item: BatchItem) => {
     const upd = (patch: Partial<BatchItem>) => setBatchItems(prev => prev.map(i => i.id === item.id ? { ...i, ...patch } : i));
+    const inputStyle = { height: 36, padding: "0 10px", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 8, fontSize: 12, color: "rgba(255,255,255,0.92)", width: "100%" };
     const descField = (
-      <Input placeholder="Descripción del Producto (Opcional)"
-        value={item.productDescription || ""} onChange={e => upd({ productDescription: e.target.value })}
-        className="h-9 text-[10px] bg-black/40 border-white/5" />
+      <input style={inputStyle} placeholder="Descripción del Producto (Opcional)"
+        value={item.productDescription || ""} onChange={e => upd({ productDescription: e.target.value })} />
     );
-    if (selectedStyle === "Ecom") return (
-      <div className="space-y-2">{descField}</div>
-    );
-    if (selectedStyle === "LifestyleNoHuman") return (
-      <div className="space-y-2">
+    if (selectedStyle === "Ecom") return <div>{descField}</div>;
+    if (selectedStyle === "LifestyleNoHuman" || selectedStyle === "Lifestyle") return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {descField}
-        <Input placeholder="Entorno para portada ML (Opcional)"
-          value={item.lifestylePrompt || ""} onChange={e => upd({ lifestylePrompt: e.target.value })}
-          className="h-9 text-[10px] bg-black/40 border-white/5" />
-      </div>
-    );
-    if (selectedStyle === "Lifestyle") return (
-      <div className="space-y-2">
-        {descField}
-        <Input placeholder="Entorno específico (Opcional)" value={item.lifestylePrompt || ""}
-          onChange={e => upd({ lifestylePrompt: e.target.value })} className="h-9 text-[10px] bg-black/40 border-white/5" />
+        <input style={inputStyle} placeholder={selectedStyle === "LifestyleNoHuman" ? "Entorno para portada ML (Opcional)" : "Entorno específico (Opcional)"}
+          value={item.lifestylePrompt || ""} onChange={e => upd({ lifestylePrompt: e.target.value })} />
       </div>
     );
     if (selectedStyle === "Technical") return (
-      <div className="space-y-2">
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {descField}
-        <div className="grid grid-cols-3 gap-2">
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
           {(["width", "height", "depth"] as const).map((k, i) => (
-            <Input key={k} placeholder={["Ancho (cm)", "Alto (cm)", "Profundo (cm)"][i]}
-              value={item[k] || ""} onChange={e => upd({ [k]: e.target.value })}
-              className={cn("h-10 text-[9px] bg-black/40 border-white/5", !item[k]?.trim() && "border-red-500/50")} />
+            <input key={k} style={{ ...inputStyle, borderColor: !item[k]?.trim() ? "rgba(248,113,113,0.4)" : "rgba(255,255,255,0.06)" }}
+              placeholder={["Ancho (cm)", "Alto (cm)", "Prof. (cm)"][i]}
+              value={item[k] || ""} onChange={e => upd({ [k]: e.target.value })} />
           ))}
         </div>
       </div>
@@ -779,26 +643,24 @@ export default function App() {
     if (selectedStyle === "Infographic") {
       const itemStyle = item.infoStyle || "Pop";
       return (
-        <div className="space-y-2">
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
           {descField}
-          <div className="grid grid-cols-2 gap-2">
+          <div style={{ display: "flex", gap: 6 }}>
             {(["Pop", "Elegante"] as const).map(s => (
-              <Button key={s} onClick={() => upd({ infoStyle: s })} size="sm"
-                className={cn("h-9 text-[9px] font-black uppercase tracking-widest border",
-                  itemStyle === s ? "bg-white text-black border-white" : "bg-transparent text-white/60 border-white/10 hover:bg-white/10")}>
+              <button key={s} onClick={() => upd({ infoStyle: s })}
+                style={{ flex: 1, height: 30, borderRadius: 8, border: `1px solid ${itemStyle === s ? "rgba(255,255,255,0.3)" : "rgba(255,255,255,0.06)"}`, background: itemStyle === s ? "rgba(255,255,255,0.1)" : "transparent", color: itemStyle === s ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
                 {s === "Pop" ? "Pop 🎨" : "Elegante ✨"}
-              </Button>
+              </button>
             ))}
           </div>
-          <Input placeholder="Título" value={item.infoTitle || ""} onChange={e => upd({ infoTitle: e.target.value })}
-            className={cn("h-9 text-[10px] bg-black/40 border-white/5", !item.infoTitle?.trim() && "border-red-500/50")} />
-          <Textarea placeholder={"Característica 1\nCaracterística 2"} value={item.infoFeatures || ""}
-            onChange={e => upd({ infoFeatures: e.target.value })}
-            className={cn("h-16 text-[10px] bg-black/40 border-white/5", !item.infoFeatures?.trim() && "border-red-500/50")} />
+          <input style={{ ...inputStyle, borderColor: !item.infoTitle?.trim() ? "rgba(248,113,113,0.4)" : "rgba(255,255,255,0.06)" }}
+            placeholder="Título" value={item.infoTitle || ""} onChange={e => upd({ infoTitle: e.target.value })} />
+          <textarea style={{ ...inputStyle, height: 60, padding: "8px 10px", resize: "none", borderColor: !item.infoFeatures?.trim() ? "rgba(248,113,113,0.4)" : "rgba(255,255,255,0.06)" }}
+            placeholder={"Característica 1\nCaracterística 2"} value={item.infoFeatures || ""}
+            onChange={e => upd({ infoFeatures: e.target.value })} />
           {itemStyle === "Elegante" && (
-            <Input placeholder="Escenario (Opcional)" value={item.infoScenario || ""}
-              onChange={e => upd({ infoScenario: e.target.value })}
-              className="h-9 text-[10px] bg-black/40 border-white/5" />
+            <input style={inputStyle} placeholder="Escenario (Opcional)" value={item.infoScenario || ""}
+              onChange={e => upd({ infoScenario: e.target.value })} />
           )}
         </div>
       );
@@ -806,12 +668,84 @@ export default function App() {
     return null;
   };
 
+  // ── Single mode right panel inputs ────────────────────────────────────────
+  const renderSingleInputs = () => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div>
+        <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>Descripción del Producto</div>
+        <Input placeholder="Ej: Zapatillas deportivas rojas Nike" value={productDescription} onChange={e => setProductDescription(e.target.value)}
+          className="h-9 text-xs bg-black/40 border-white/[0.06]" />
+        <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", marginTop: 4, textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Opcional — Ayuda a la IA a identificar el producto</p>
+      </div>
+      <AnimatePresence mode="wait">
+        {(selectedStyle === "Lifestyle" || selectedStyle === "LifestyleNoHuman") && (
+          <motion.div key="lifestyle" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>
+              {selectedStyle === "LifestyleNoHuman" ? "Entorno para Portada" : "Entorno Preferido"}
+            </div>
+            <Input placeholder={selectedStyle === "LifestyleNoHuman" ? "Ej: Cocina moderna, escritorio minimalista..." : "Ej: En un parque, en una cocina..."}
+              value={lifestylePrompt} onChange={e => setLifestylePrompt(e.target.value)} className="h-9 text-xs bg-black/40 border-white/[0.06]" />
+          </motion.div>
+        )}
+        {selectedStyle === "Technical" && (
+          <motion.div key="technical" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>
+              Dimensiones <span style={{ color: "#F87171" }}>*</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+              {[["Ancho (cm)", width, setWidth], ["Alto (cm)", height, setHeight], ["Prof. (cm)", depth, setDepth]].map(([label, val, setter]) => (
+                <div key={label as string}>
+                  <div style={{ fontSize: 9.5, color: "rgba(255,255,255,0.32)", marginBottom: 4, textTransform: "uppercase" as const, letterSpacing: 0.8 }}>{(label as string).split(" ")[0]}</div>
+                  <Input placeholder={label as string} value={val as string} onChange={e => (setter as (v: string) => void)(e.target.value)}
+                    className={cn("h-9 text-xs bg-black/40", !(val as string).trim() ? "border-red-500/40" : "border-white/[0.06]")} />
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+        {selectedStyle === "Infographic" && (
+          <motion.div key="infographic" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div>
+              <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>Estilo Visual</div>
+              <div style={{ display: "flex", gap: 6 }}>
+                {(["Pop", "Elegante"] as const).map(s => (
+                  <button key={s} onClick={() => setInfoStyle(s)}
+                    style={{ flex: 1, height: 34, borderRadius: 8, border: `1px solid ${infoStyle === s ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.06)"}`, background: infoStyle === s ? "rgba(255,255,255,0.08)" : "transparent", color: infoStyle === s ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    {s === "Pop" ? "Pop 🎨" : "Elegante ✨"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>Título <span style={{ color: "#F87171" }}>*</span></div>
+              <Input placeholder="Ej: El mejor del mercado" value={infoTitle} onChange={e => setInfoTitle(e.target.value)}
+                className={cn("h-9 text-xs bg-black/40", !infoTitle.trim() ? "border-red-500/40" : "border-white/[0.06]")} />
+            </div>
+            <div>
+              <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>Características <span style={{ color: "#F87171" }}>*</span></div>
+              <Textarea placeholder={"Duradero\nElegante\nEconómico"} value={infoFeatures} onChange={e => setInfoFeatures(e.target.value)}
+                className={cn("text-xs h-20 bg-black/40", !infoFeatures.trim() ? "border-red-500/40" : "border-white/[0.06]")} />
+              <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", marginTop: 4, textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Una característica por línea</p>
+            </div>
+            {infoStyle === "Elegante" && (
+              <div>
+                <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 8 }}>Escenario</div>
+                <Input placeholder="Ej: Mesa de madera con taza humeante" value={infoScenario} onChange={e => setInfoScenario(e.target.value)}
+                  className="h-9 text-xs bg-black/40 border-white/[0.06]" />
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
   return (
     <TooltipProvider>
-      <div className="min-h-screen flex flex-col items-center p-4 md:p-8 max-w-7xl mx-auto">
+      <div className="min-h-screen flex flex-col" style={{ background: "#050505", color: "rgba(255,255,255,0.92)", fontFamily: "Inter, system-ui, sans-serif" }}>
         <Toaster position="top-center" />
 
         {/* Hidden file inputs */}
@@ -821,627 +755,565 @@ export default function App() {
         <input type="file" ref={batchCameraInputRef} onChange={handleBatchFiles} className="hidden" accept="image/*" capture="environment" />
         <input type="file" ref={csvInputRef}         onChange={handleCsvImport}  className="hidden" accept=".csv,.xlsx,.xls,text/csv" />
 
-        {/* Header */}
+        {/* ── Header ───────────────────────────────────────────────────────── */}
         {!isEmbed && (
-          <motion.header initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="w-full text-center mb-6 md:mb-12">
-            <div className="flex flex-wrap justify-center mb-4 gap-2">
-              <Badge variant="outline" className="px-3 py-0.5 border-brand-gold/30 text-brand-gold bg-brand-gold/5 text-[10px] md:text-xs">
-                Gemini 2.5 Flash Image
-              </Badge>
-              {isGoogleAuth ? (
-                <Badge className="bg-blue-500/10 text-blue-400 border-blue-500/20 text-[10px] md:text-xs">
-                  <Cloud className="w-3 h-3 mr-1" /> Drive Conectado
-                </Badge>
-              ) : (
-                <Button variant="outline" size="sm" onClick={handleConnectDrive}
-                  className="h-6 md:h-7 text-[9px] md:text-[10px] border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
-                  <Cloud className="w-3 h-3 mr-1" /> Conectar Drive
-                </Button>
-              )}
+          <header
+            className="shrink-0 flex items-center justify-between px-[18px]"
+            style={{ height: 56, borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.85)", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50 }}
+          >
+            <div className="flex items-center gap-[18px]">
+              {/* LogoMark + Wordmark */}
+              <div className="flex items-center gap-[10px]">
+                <div style={{ width: 24, height: 24, borderRadius: 6, background: "linear-gradient(135deg,#C4B5FD,#8B5CF6)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 16px rgba(196,181,253,0.25),inset 0 0 0 1px rgba(255,255,255,0.2)", flexShrink: 0 }}>
+                  <div style={{ width: 10, height: 10, background: "#050505", borderRadius: 3, transform: "rotate(45deg)" }} />
+                </div>
+                <span style={{ fontFamily: '"Playfair Display",serif', fontWeight: 700, fontSize: 18, letterSpacing: -0.5, whiteSpace: "nowrap" }}>
+                  ProEcom <span style={{ color: "#D4AF37", fontStyle: "italic" }}>AI</span>
+                </span>
+              </div>
+              <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.06)", flexShrink: 0 }} />
+              {/* Nav tabs */}
+              <nav className="flex gap-1">
+                {(["Crear", "Por lote", "Historial"] as const).map(label => {
+                  const tab: ActiveTab = label === "Crear" ? "crear" : label === "Por lote" ? "lote" : "historial";
+                  const isActive = activeTab === tab;
+                  return (
+                    <button key={label}
+                      onClick={() => { setActiveTab(tab); if (tab === "lote") setIsBatchMode(true); else if (tab === "crear") setIsBatchMode(false); }}
+                      style={{ padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, border: "none", cursor: "pointer", background: isActive ? "rgba(255,255,255,0.07)" : "transparent", color: isActive ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", transition: "background 0.15s,color 0.15s" }}>
+                      {label}
+                      {label === "Historial" && history.length > 0 && (
+                        <span style={{ marginLeft: 6, fontSize: 11, color: "rgba(255,255,255,0.32)" }}>{history.length}</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
             </div>
-            <h1 className="text-4xl md:text-7xl font-serif font-bold tracking-tight mb-2 md:mb-4">
-              ProEcom <span className="text-brand-gold">AI</span>
-            </h1>
-            <p className="text-white/40 text-sm md:text-lg max-w-2xl mx-auto px-4">
-              Optimización masiva de productos para e-commerce con fidelidad total.
-            </p>
-          </motion.header>
+            {/* Right chips */}
+            <div className="flex items-center gap-[10px]">
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(212,175,55,0.08)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.25)", fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500 }}>
+                <Sparkles size={11} strokeWidth={1.75} /> Gemini 2.5
+              </span>
+              {isGoogleAuth ? (
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(74,222,128,0.08)", color: "#4ADE80", border: "1px solid rgba(74,222,128,0.25)", fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500 }}>
+                  <Cloud size={11} strokeWidth={1.75} /> Drive
+                </span>
+              ) : (
+                <button onClick={handleConnectDrive} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500, cursor: "pointer" }}>
+                  <Cloud size={11} strokeWidth={1.75} /> Conectar Drive
+                </button>
+              )}
+              <div style={{ width: 32, height: 32, borderRadius: 999, background: "linear-gradient(135deg,#C4B5FD,#8B5CF6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#0A0A0E" }}>P</div>
+            </div>
+          </header>
         )}
 
-        <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8 items-start">
+        {/* ── Body ─────────────────────────────────────────────────────────── */}
+        <div className="flex flex-1 min-h-0" style={{ height: isEmbed ? "100vh" : "calc(100vh - 56px)" }}>
 
-          {/* ── Main viewport ── */}
-          {!isBatchMode && (
-            <div className={cn("lg:order-2 space-y-6", isEmbed ? "lg:col-span-7" : "lg:col-span-5")}>
-              <Card className="glass-card overflow-hidden bg-black/40 border-white/5 aspect-square relative group shadow-2xl"
-                onDragOver={e => e.preventDefault()} onDrop={onDrop}>
-                <AnimatePresence mode="wait">
-                  {selectedStyle === "Video360" && video360Result ? (
-                    <motion.div key="v360" className="w-full h-full relative" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <video src={video360Result} className="w-full h-full object-contain p-4 md:p-8" autoPlay loop muted playsInline />
-                      <div className="absolute top-4 right-4 flex gap-2">
-                        <Badge className="bg-brand-violet/20 text-brand-violet border-brand-violet/30 backdrop-blur-md">
-                          <Sparkles className="w-3 h-3 mr-1" /> 360° Video
-                        </Badge>
-                        <Button size="icon" className="bg-white/90 hover:bg-white text-black rounded-full shadow-lg h-8 w-8" onClick={() => setIsPreviewOpen(true)}><Maximize className="w-4 h-4" /></Button>
-                        <Button size="icon" className="bg-white/90 hover:bg-white text-black rounded-full shadow-lg h-8 w-8" onClick={() => downloadUrl(video360Result!, `360-view-${Date.now()}.mp4`)}><Download className="w-4 h-4" /></Button>
-                      </div>
-                    </motion.div>
-                  ) : isProcessing ? (
-                    <motion.div key="loading" className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-md z-10" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-                      <div className="relative w-20 h-20 md:w-24 md:h-24 mb-6">
-                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: "linear" }} className="absolute inset-0 border-t-2 border-brand-gold rounded-full" />
-                        <Sparkles className="absolute inset-0 m-auto w-8 h-8 text-brand-gold animate-pulse" />
-                      </div>
-                      <p className="text-brand-gold font-medium animate-pulse text-sm md:text-base">Generando perfección...</p>
-                    </motion.div>
-                  ) : !image && selectedStyle !== "Video360" ? (
-                    <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="absolute inset-0 flex flex-col items-center justify-center p-8 md:p-12 group">
-                      <div className="w-16 h-16 md:w-24 md:h-24 bg-white/5 rounded-3xl flex items-center justify-center mb-6 border border-white/10 group-hover:scale-110 group-hover:border-brand-gold/50 transition-all duration-500">
-                        <Upload className="w-8 h-8 md:w-12 md:h-12 text-white/40 group-hover:text-brand-gold transition-colors" />
-                      </div>
-                      <h3 className="text-xl md:text-3xl font-serif font-bold mb-3 text-white tracking-tight">Cargar Producto</h3>
-                      <p className="text-white/50 text-xs md:text-base text-center max-w-[300px] leading-relaxed mb-8">
-                        Sube una foto o toma una directamente con tu cámara.
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-4 w-full max-w-[300px]">
-                        <Button onClick={() => fileInputRef.current?.click()} className="flex-1 bg-white/10 hover:bg-white/20 text-white border border-white/20 h-12 rounded-xl backdrop-blur-md">
-                          <ImageIcon className="w-4 h-4 mr-2" /> Galería
-                        </Button>
-                        <Button onClick={() => cameraInputRef.current?.click()} className="flex-1 bg-brand-violet hover:bg-white text-black h-12 rounded-xl shadow-[0_0_20px_rgba(196,181,253,0.3)]">
-                          <Camera className="w-4 h-4 mr-2" /> Cámara
-                        </Button>
-                      </div>
-                    </motion.div>
-                  ) : selectedStyle === "Video360" && !video360Result ? (
-                    <motion.div key="v360-empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                      className="absolute inset-0 flex flex-col items-center justify-center p-8 md:p-12 text-center">
-                      <div className="w-16 h-16 md:w-24 md:h-24 bg-brand-violet/10 rounded-3xl flex items-center justify-center mb-6 border border-brand-violet/20">
-                        <Video className="w-8 h-8 md:w-12 md:h-12 text-brand-violet/60" />
-                      </div>
-                      <h3 className="text-xl md:text-3xl font-serif font-bold mb-3 text-white tracking-tight">Creador Video 360°</h3>
-                      <p className="text-white/50 text-xs md:text-base max-w-[300px] leading-relaxed">
-                        Sube las fotos de los diferentes ángulos en el panel izquierdo.
-                      </p>
-                    </motion.div>
-                  ) : result ? (
-                    <motion.div key="result" className="w-full h-full relative">
-                      {showComparison && image ? (
-                        <ComparisonSlider before={image} after={result} />
-                      ) : (
-                        <>
-                          <img src={result} className="w-full h-full object-contain p-4 md:p-8" referrerPolicy="no-referrer" />
-                          <div className="absolute top-4 right-4">
-                            <Badge className="bg-green-500/20 text-green-400 border-green-500/30 backdrop-blur-md">
-                              <Check className="w-3 h-3 mr-1" /> IA Ready
-                            </Badge>
-                          </div>
-                          <div className="absolute inset-0 bg-black/40 md:bg-black/0 md:hover:bg-black/60 transition-all flex flex-col items-center justify-center opacity-100 md:opacity-0 md:hover:opacity-100 group gap-4">
-                            <div className="flex gap-3">
-                              <Button onClick={() => setIsPreviewOpen(true)} className="bg-white text-black hover:bg-brand-gold font-black uppercase tracking-widest px-6 h-12 shadow-2xl">
-                                <Maximize className="w-5 h-5 mr-2" /> Expandir
-                              </Button>
-                              <Button onClick={() => setShowComparison(true)} className="bg-white/10 text-white hover:bg-white/20 backdrop-blur-md font-black uppercase tracking-widest px-6 h-12 border border-white/20">
-                                <Eye className="w-5 h-5 mr-2" /> Comparar
-                              </Button>
-                            </div>
-                            <div className="flex gap-3">
-                              <Button onClick={() => fileInputRef.current?.click()} className="bg-white/10 text-white hover:bg-white/20 border border-white/20 font-black uppercase tracking-widest px-6 h-12 backdrop-blur-md">
-                                <ImageIcon className="w-5 h-5 mr-2" /> Galería
-                              </Button>
-                              <Button onClick={() => cameraInputRef.current?.click()} className="bg-brand-violet text-black hover:bg-white font-black uppercase tracking-widest px-6 h-12 shadow-2xl">
-                                <Camera className="w-5 h-5 mr-2" /> Cámara
-                              </Button>
-                            </div>
-                          </div>
-                        </>
-                      )}
-                    </motion.div>
-                  ) : (
-                    <motion.div key="preview" className="w-full h-full relative group">
-                      <img src={image!} className="w-full h-full object-contain p-4 md:p-8 opacity-50 grayscale" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="bg-black/40 backdrop-blur-sm px-4 py-2 rounded-full border border-white/10">
-                          <p className="text-xs text-white/60 font-medium">Vista previa original</p>
-                        </div>
-                      </div>
-                      <div className="absolute inset-0 bg-black/40 md:bg-black/0 md:hover:bg-black/40 transition-all flex items-center justify-center opacity-100 md:opacity-0 md:hover:opacity-100">
-                        <div className="flex gap-3">
-                          <Button onClick={() => fileInputRef.current?.click()} className="bg-white/10 text-white hover:bg-white/20 border border-white/20 font-black uppercase tracking-widest px-6 h-12 backdrop-blur-md">
-                            <ImageIcon className="w-5 h-5 mr-2" /> Galería
-                          </Button>
-                          <Button onClick={() => cameraInputRef.current?.click()} className="bg-brand-violet text-black hover:bg-white font-black uppercase tracking-widest px-6 h-12 shadow-2xl">
-                            <Camera className="w-5 h-5 mr-2" /> Cámara
-                          </Button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </Card>
+          {/* Style Rail — only in crear/lote tabs */}
+          {activeTab !== "historial" && (
+            <nav style={{ width: 76, flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.4)", padding: "16px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              {STYLES.map(s => {
+                const active = selectedStyle === s.id;
+                const SIcon = s.icon;
+                return (
+                  <button key={s.id} onClick={() => setSelectedStyle(s.id)}
+                    style={{ width: 56, padding: "10px 0", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: active ? "rgba(255,255,255,0.07)" : "transparent", color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.15s,color 0.15s" }}>
+                    {active && <div style={{ position: "absolute", left: -10, top: 12, bottom: 12, width: 2.5, borderRadius: 2, background: "#C4B5FD" }} />}
+                    <SIcon size={18} strokeWidth={1.75} />
+                    <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: 0.2 }}>{s.short}</span>
+                  </button>
+                );
+              })}
+              <div style={{ flex: 1 }} />
+              <button style={{ width: 40, height: 40, borderRadius: 12, border: "none", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Settings size={18} strokeWidth={1.75} />
+              </button>
+            </nav>
+          )}
 
-              {result && !isBatchMode && (
-                <div className="flex flex-col gap-4">
-                  <div className="flex gap-4">
-                    <Button onClick={downloadResult} className="btn-premium flex-1 h-16 bg-white text-black hover:bg-brand-gold hover:text-black">
-                      <Download className="w-6 h-6 mr-3" /> Descargar HD
-                    </Button>
-                    <Button onClick={() => handleSaveToDrive(result)} disabled={isSavingToDrive}
-                      className={cn("btn-premium flex-1 h-16 border border-white/10", isGoogleAuth ? "bg-blue-600 hover:bg-blue-700 text-white" : "bg-white/5 hover:bg-white/10 text-white/60")}>
-                      {isSavingToDrive ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Cloud className="w-6 h-6 mr-3" />}
-                      {isGoogleAuth ? "Guardar en Drive" : "Conectar Drive"}
-                    </Button>
+          {/* ── CREAR TAB ─────────────────────────────────────────────────── */}
+          {activeTab === "crear" && (
+            <>
+              {/* Center stage */}
+              <main style={{ flex: 1, display: "flex", flexDirection: "column", padding: 20, gap: 12, minWidth: 0, overflow: "hidden" }}>
+                {/* Stage header */}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#C4B5FD", fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase" }}>
+                      Estilo · {STYLES.find(s => s.id === selectedStyle)?.label}
+                    </div>
+                    <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 22, fontWeight: 700, marginTop: 2 }}>
+                      {STYLES.find(s => s.id === selectedStyle)?.desc}
+                    </div>
                   </div>
-                  <div className="flex gap-3">
-                    <Button variant="ghost" onClick={() => setShowComparison(v => !v)}
-                      className={cn("flex-1 h-10 text-[10px] font-black uppercase tracking-[0.25em] border transition-all",
-                        showComparison ? "border-brand-violet/50 text-brand-violet bg-brand-violet/10" : "border-white/5 text-white/40 hover:text-white hover:bg-white/5")}>
-                      <Eye className="w-4 h-4 mr-2" /> {showComparison ? "Ocultar comparación" : "Comparar antes/después"}
-                    </Button>
-                    <Button variant="ghost" onClick={() => { setResult(null); setShowComparison(false); }}
-                      className="h-10 px-4 text-[10px] font-black uppercase tracking-[0.25em] text-white/30 hover:text-white hover:bg-white/5 border border-white/5">
-                      <X className="w-4 h-4" />
-                    </Button>
+                  {result && (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => setShowComparison(v => !v)}
+                        style={{ height: 38, padding: "0 14px", borderRadius: 12, border: `1px solid ${showComparison ? "rgba(196,181,253,0.4)" : "rgba(255,255,255,0.08)"}`, background: showComparison ? "rgba(196,181,253,0.1)" : "transparent", color: showComparison ? "#C4B5FD" : "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <Eye size={15} strokeWidth={1.75} /> Comparar
+                      </button>
+                      <button onClick={() => setIsPreviewOpen(true)}
+                        style={{ height: 38, padding: "0 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <Maximize size={15} strokeWidth={1.75} /> Expandir
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stage canvas */}
+                <div
+                  style={{ flex: 1, borderRadius: 20, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", position: "relative", background: "#0B0B0D", minHeight: 0 }}
+                  onDragOver={e => e.preventDefault()} onDrop={onDrop}
+                >
+                  <AnimatePresence mode="wait">
+                    {isProcessing ? (
+                      <motion.div key="loading" className="absolute inset-0 flex flex-col items-center justify-center"
+                        style={{ background: "linear-gradient(135deg,#0e0e12,#161620)" }}
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <div style={{ position: "relative", marginBottom: 28 }}>
+                          <motion.div animate={{ rotate: 360 }} transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                            style={{ width: 84, height: 84, borderRadius: 999, border: "2px solid rgba(255,255,255,0.06)", borderTopColor: "#C4B5FD" }} />
+                          <Sparkles className="absolute inset-0 m-auto" size={30} style={{ color: "#C4B5FD" }} />
+                        </div>
+                        <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 26, fontWeight: 700, color: "#C4B5FD", textAlign: "center" }}>Generando perfección…</div>
+                        <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 13.5, marginTop: 10 }}>Analizando el producto y limpiando el fondo.</p>
+                        <div style={{ marginTop: 36, display: "flex", gap: 8, alignItems: "center", padding: "10px 18px", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 999 }}>
+                          {[{ l: "Analizar", done: true }, { l: "Limpiar", done: true }, { l: "Render", done: false, active: true }, { l: "Refinar", done: false }].map((s, i) => (
+                            <React.Fragment key={s.l}>
+                              {i > 0 && <div style={{ width: 16, height: 1, background: "rgba(255,255,255,0.06)" }} />}
+                              <div style={{ display: "flex", alignItems: "center", gap: 6, color: s.done || s.active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.32)" }}>
+                                <div style={{ width: 16, height: 16, borderRadius: 999, background: s.done ? "#4ADE80" : s.active ? "rgba(196,181,253,0.2)" : "transparent", border: `1px solid ${s.done ? "#4ADE80" : s.active ? "#C4B5FD" : "rgba(255,255,255,0.12)"}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  {s.done && <Check size={10} style={{ color: "#062E15" }} />}
+                                </div>
+                                <span style={{ fontSize: 11.5, fontWeight: 600 }}>{s.l}</span>
+                              </div>
+                            </React.Fragment>
+                          ))}
+                        </div>
+                      </motion.div>
+                    ) : !image ? (
+                      <motion.div key="empty" className="absolute inset-0 flex flex-col items-center justify-center gap-7"
+                        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <div style={{ position: "absolute", inset: 0, border: "1.5px dashed rgba(196,181,253,0.18)", borderRadius: 20, pointerEvents: "none" }} />
+                        <div style={{ width: 96, height: 96, borderRadius: 24, background: "radial-gradient(circle at 30% 30%,rgba(196,181,253,0.2),rgba(196,181,253,0.04))", border: "1px solid rgba(196,181,253,0.18)", display: "flex", alignItems: "center", justifyContent: "center", color: "#C4B5FD" }}>
+                          <Upload size={36} strokeWidth={1.75} />
+                        </div>
+                        <div style={{ textAlign: "center", maxWidth: 360 }}>
+                          <h2 style={{ fontFamily: '"Playfair Display",serif', fontSize: 30, fontWeight: 700, margin: 0, lineHeight: 1.15 }}>Subí una foto de tu producto</h2>
+                          <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 14, margin: "12px 0 0", lineHeight: 1.5 }}>
+                            Arrastrá una imagen acá, pegala con <kbd style={{ fontFamily: "ui-monospace,monospace", padding: "1px 6px", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 4, fontSize: 11, background: "rgba(255,255,255,0.05)" }}>⌘V</kbd>, o usá los botones.
+                          </p>
+                        </div>
+                        <div style={{ display: "flex", gap: 12 }}>
+                          <button onClick={() => fileInputRef.current?.click()}
+                            style={{ height: 46, padding: "0 18px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.92)", fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}>
+                            <ImageIcon size={17} strokeWidth={1.75} /> Desde galería
+                          </button>
+                          <button onClick={() => cameraInputRef.current?.click()}
+                            style={{ height: 46, padding: "0 18px", borderRadius: 12, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, boxShadow: "0 10px 28px -10px rgba(196,181,253,0.6),inset 0 1px 0 rgba(255,255,255,0.3)" }}>
+                            <Camera size={17} strokeWidth={1.75} /> Tomar foto
+                          </button>
+                        </div>
+                        <div style={{ position: "absolute", bottom: 20, left: 20, right: 20, display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(255,255,255,0.32)" }}>
+                          <span>JPG · PNG · WebP · hasta 10 MB</span>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                            <span style={{ width: 6, height: 6, borderRadius: 999, background: "#4ADE80", display: "inline-block" }} /> IA lista
+                          </span>
+                        </div>
+                      </motion.div>
+                    ) : result ? (
+                      <motion.div key="result" className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        {showComparison && image
+                          ? <ComparisonSlider before={image} after={result} />
+                          : <img src={result} className="w-full h-full object-contain p-8" referrerPolicy="no-referrer" />
+                        }
+                        <div style={{ position: "absolute", top: 14, right: 14 }}>
+                          <span style={{ padding: "4px 10px", borderRadius: 999, background: "rgba(74,222,128,0.95)", color: "#0a3a1c", fontSize: 10, fontWeight: 700, letterSpacing: 0.5 }}>IA · LISTO</span>
+                        </div>
+                      </motion.div>
+                    ) : (
+                      <motion.div key="preview" className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                        <img src={image} className="w-full h-full object-contain p-8 opacity-60 grayscale" />
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div style={{ background: "rgba(0,0,0,0.4)", backdropFilter: "blur(4px)", padding: "6px 14px", borderRadius: 999, border: "1px solid rgba(255,255,255,0.08)" }}>
+                            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.6)", fontWeight: 500 }}>Vista previa original</span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
+                {/* Stage footer */}
+                {result && !isProcessing && (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, color: "rgba(255,255,255,0.32)", flexShrink: 0 }}>
+                    <span>{originalFileName || "imagen.jpg"}</span>
+                    <button onClick={() => { setResult(null); setShowComparison(false); }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.32)", fontSize: 11.5, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <RefreshCw size={12} strokeWidth={1.75} /> reiniciar
+                    </button>
+                  </div>
+                )}
+              </main>
+
+              {/* Right panel */}
+              <aside style={{ width: 340, flexShrink: 0, borderLeft: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.5)", display: "flex", flexDirection: "column" }}>
+                <div style={{ flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }} className="custom-scrollbar">
+
+                  {/* Tu foto */}
+                  {image && (
+                    <div>
+                      <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 10 }}>Tu foto</div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 10, background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12 }}>
+                        <div style={{ width: 52, height: 52, borderRadius: 10, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }}>
+                          <img src={image} className="w-full h-full object-cover" />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{originalFileName || "imagen.jpg"}</div>
+                          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.32)", marginTop: 2 }}>Foto cargada</div>
+                        </div>
+                        <button onClick={() => fileInputRef.current?.click()}
+                          style={{ width: 30, height: 30, borderRadius: 8, background: "transparent", border: "1px solid rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.55)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+                          <RefreshCw size={13} strokeWidth={1.75} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Style-specific inputs */}
+                  {renderSingleInputs()}
+
+                  {/* Salida */}
+                  <div>
+                    <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 10 }}>Salida</div>
+                    <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                      {(["1:1", "9:16", "16:9"] as const).map((r, i) => {
+                        const dims = [{ w: 14, h: 14 }, { w: 10, h: 16 }, { w: 16, h: 10 }][i];
+                        return (
+                          <button key={r} onClick={() => setImageAspectRatio(r)}
+                            style={{ flex: 1, height: 50, borderRadius: 10, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 5, background: imageAspectRatio === r ? "rgba(196,181,253,0.08)" : "transparent", border: `1px solid ${imageAspectRatio === r ? "rgba(196,181,253,0.18)" : "rgba(255,255,255,0.06)"}`, cursor: "pointer" }}>
+                            <div style={{ width: dims.w, height: dims.h, border: `1.5px solid ${imageAspectRatio === r ? "#C4B5FD" : "rgba(255,255,255,0.32)"}`, borderRadius: 2 }} />
+                            <span style={{ fontSize: 10.5, color: imageAspectRatio === r ? "#C4B5FD" : "rgba(255,255,255,0.32)", fontWeight: 600 }}>{r}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      {([{ f: "png", l: "PNG", h: "Nítido" }, { f: "webp", l: "WebP", h: "Óptimo" }, { f: "jpeg", l: "JPEG", h: "Compat." }] as { f: OutputFormat, l: string, h: string }[]).map(o => (
+                        <button key={o.f} onClick={() => setOutputFormat(o.f)}
+                          style={{ flex: 1, padding: "7px 0", borderRadius: 8, display: "flex", flexDirection: "column", alignItems: "center", background: outputFormat === o.f ? "rgba(255,255,255,0.06)" : "transparent", border: `1px solid ${outputFormat === o.f ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.06)"}`, cursor: "pointer" }}>
+                          <span style={{ fontSize: 11.5, fontWeight: 600, color: outputFormat === o.f ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)" }}>{o.l}</span>
+                          <span style={{ fontSize: 9.5, color: "rgba(255,255,255,0.32)", marginTop: 1 }}>{o.h}</span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
+
+                {/* Fixed footer */}
+                <div style={{ padding: 16, borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(5,5,5,0.7)", display: "flex", flexDirection: "column", gap: 8 }}>
+                  {result && (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={downloadResult}
+                        style={{ flex: 1, height: 46, borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.07)", color: "rgba(255,255,255,0.92)", fontSize: 13.5, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                        <Download size={15} strokeWidth={1.75} /> Descargar
+                      </button>
+                      <button onClick={() => handleSaveToDrive(result)} disabled={isSavingToDrive}
+                        style={{ height: 46, padding: "0 14px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        {isSavingToDrive ? <RefreshCw size={15} className="animate-spin" /> : <Cloud size={15} strokeWidth={1.75} />} Drive
+                      </button>
+                    </div>
+                  )}
+                  <button onClick={handleTransform} disabled={!image || isProcessing || !isFormValid()}
+                    style={{ width: "100%", height: 54, borderRadius: 12, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 14.5, fontWeight: 700, cursor: (!image || !isFormValid()) ? "not-allowed" : "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 10px 28px -10px rgba(196,181,253,0.6),inset 0 1px 0 rgba(255,255,255,0.3)", opacity: (!image || isProcessing || !isFormValid()) ? 0.4 : 1, transition: "opacity 0.15s" }}>
+                    {isProcessing ? <RefreshCw size={17} className="animate-spin" /> : <Sparkles size={17} strokeWidth={1.75} />}
+                    {isProcessing ? "Generando…" : result ? "Regenerar imagen" : "Crear imagen"}
+                  </button>
+                  {!image && <div style={{ fontSize: 11.5, color: "rgba(255,255,255,0.32)", textAlign: "center" }}>Subí una foto para activar</div>}
+                </div>
+              </aside>
+            </>
+          )}
+
+          {/* ── LOTE TAB ──────────────────────────────────────────────────── */}
+          {activeTab === "lote" && (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 24, gap: 16, overflowY: "auto" }} className="custom-scrollbar">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <div style={{ fontSize: 11, color: "#C4B5FD", fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase" }}>Por lote</div>
+                  <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 22, fontWeight: 700, marginTop: 2 }}>Procesamiento masivo</div>
+                </div>
+                {batchItems.length > 0 && (
+                  <button onClick={() => { setBatchItems([]); setCsvParsedRows([]); setCsvValidation(null); }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, border: "none", background: "transparent", color: "rgba(248,113,113,0.6)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}>
+                    <Trash2 size={13} strokeWidth={1.75} /> Reiniciar Lote
+                  </button>
+                )}
+              </div>
+
+              {/* Style selector */}
+              <div>
+                <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.4, color: "#C4B5FD", marginBottom: 10 }}>Tipo de imagen</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {STYLES.map(s => {
+                    const SIcon = s.icon;
+                    return (
+                      <button key={s.id} onClick={() => setSelectedStyle(s.id)}
+                        style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "7px 14px", borderRadius: 10, border: `1px solid ${selectedStyle === s.id ? "rgba(196,181,253,0.4)" : "rgba(255,255,255,0.06)"}`, background: selectedStyle === s.id ? "rgba(196,181,253,0.1)" : "transparent", color: selectedStyle === s.id ? "#C4B5FD" : "rgba(255,255,255,0.55)", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+                        <SIcon size={14} strokeWidth={1.75} /> {s.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Drop zone */}
+              <div
+                style={{ border: `2px dashed ${batchDropActive ? "#C4B5FD" : "rgba(196,181,253,0.3)"}`, borderRadius: 16, padding: 24, textAlign: "center", background: batchDropActive ? "rgba(196,181,253,0.08)" : "rgba(196,181,253,0.03)", display: "flex", flexDirection: "column", alignItems: "center", gap: 16, transition: "all 0.15s" }}
+                onDragOver={e => { e.preventDefault(); setBatchDropActive(true); }}
+                onDragLeave={() => setBatchDropActive(false)}
+                onDrop={handleBatchDrop}
+              >
+                <p style={{ fontSize: 14, fontWeight: 700, color: "rgba(255,255,255,0.92)", margin: 0, textTransform: "uppercase", letterSpacing: 1 }}>
+                  {batchDropActive ? "Soltar imágenes aquí" : "Añadir Imágenes"}
+                </p>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+                  <button onClick={() => batchInputRef.current?.click()}
+                    style={{ height: 38, padding: "0 14px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.1)", background: "rgba(255,255,255,0.05)", color: "rgba(255,255,255,0.92)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                    <ImageIcon size={14} strokeWidth={1.75} /> Galería
+                  </button>
+                  <button onClick={() => batchCameraInputRef.current?.click()}
+                    style={{ height: 38, padding: "0 14px", borderRadius: 10, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 7 }}>
+                    <Camera size={14} strokeWidth={1.75} /> Cámara
+                  </button>
+                  <button onClick={downloadCsvTemplate}
+                    style={{ height: 38, padding: "0 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <Download size={13} strokeWidth={1.75} /> CSV
+                  </button>
+                  <button onClick={downloadXlsxTemplate}
+                    style={{ height: 38, padding: "0 12px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <Download size={13} strokeWidth={1.75} /> XLSX
+                  </button>
+                  <button onClick={() => csvInputRef.current?.click()}
+                    style={{ height: 38, padding: "0 12px", borderRadius: 10, border: `1px solid ${csvParsedRows.length > 0 ? "rgba(196,181,253,0.4)" : "rgba(255,255,255,0.08)"}`, background: csvParsedRows.length > 0 ? "rgba(196,181,253,0.08)" : "transparent", color: csvParsedRows.length > 0 ? "#C4B5FD" : "rgba(255,255,255,0.55)", fontSize: 12, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <Upload size={13} strokeWidth={1.75} /> {csvParsedRows.length > 0 ? `Planilla (${csvParsedRows.length})` : "Planilla"}
+                  </button>
+                </div>
+              </div>
+
+              {/* CSV validation panel */}
+              {csvValidation && (csvValidation.unmatchedImages.length > 0 || csvValidation.unmatchedSkus.length > 0) && (
+                <div style={{ borderRadius: 16, border: "1px solid rgba(234,179,8,0.2)", background: "rgba(234,179,8,0.04)", padding: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1.4, color: "#fbbf24" }}>Validación SKU</span>
+                    <button onClick={() => setCsvValidation(null)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.32)", display: "flex" }}><X size={14} /></button>
+                  </div>
+                  {csvValidation.unmatchedImages.length > 0 && (
+                    <div style={{ marginBottom: 10 }}>
+                      <p style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "rgba(251,191,36,0.7)", marginBottom: 6 }}>Imágenes sin SKU en planilla ({csvValidation.unmatchedImages.length})</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {csvValidation.unmatchedImages.map(n => <span key={n} style={{ fontSize: 10, background: "rgba(251,191,36,0.08)", border: "1px solid rgba(251,191,36,0.2)", borderRadius: 999, padding: "2px 8px", color: "rgba(251,191,36,0.8)", fontFamily: "ui-monospace,monospace" }}>{n}</span>)}
+                      </div>
+                    </div>
+                  )}
+                  {csvValidation.unmatchedSkus.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 9.5, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.8, color: "rgba(251,146,60,0.7)", marginBottom: 6 }}>SKUs en planilla sin imagen ({csvValidation.unmatchedSkus.length})</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {csvValidation.unmatchedSkus.map(s => <span key={s} style={{ fontSize: 10, background: "rgba(251,146,60,0.08)", border: "1px solid rgba(251,146,60,0.2)", borderRadius: 999, padding: "2px 8px", color: "rgba(251,146,60,0.8)", fontFamily: "ui-monospace,monospace" }}>{s}</span>)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Items list */}
+              {batchItems.length > 0 && (
+                <>
+                  <ScrollArea className="pr-2" style={{ maxHeight: 500 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {batchItems.map((item, itemIdx) => (
+                        <div key={item.id}
+                          draggable
+                          onDragStart={() => { dragIndex.current = itemIdx; }}
+                          onDragOver={e => { e.preventDefault(); setDragOverId(item.id); }}
+                          onDrop={() => { if (dragIndex.current !== null) reorderBatch(dragIndex.current, itemIdx); dragIndex.current = null; setDragOverId(null); }}
+                          onDragEnd={() => { dragIndex.current = null; setDragOverId(null); }}
+                          style={{ padding: 14, borderRadius: 14, border: `1px solid ${item.status === "completed" ? "rgba(74,222,128,0.4)" : item.status === "error" ? "rgba(248,113,113,0.4)" : dragOverId === item.id ? "rgba(196,181,253,0.5)" : "rgba(255,255,255,0.06)"}`, background: dragOverId === item.id ? "rgba(196,181,253,0.04)" : "rgba(0,0,0,0.25)" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <GripVertical size={16} style={{ color: "rgba(255,255,255,0.2)", flexShrink: 0, cursor: "grab" }} />
+                            <div style={{ width: 52, height: 52, borderRadius: 10, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)", cursor: item.status === "completed" ? "pointer" : "default" }}
+                              onClick={() => item.status === "completed" && item.result && setSelectedHistoryItem({ id: item.id, original: item.preview, result: item.result, style: selectedStyle, timestamp: Date.now(), fileName: item.file.name })}>
+                              <img src={item.status === "completed" && item.result ? item.result : item.preview} className="w-full h-full object-cover" />
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <p style={{ fontSize: 12.5, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", margin: 0 }}>{item.file.name}</p>
+                              <p style={{ fontSize: 10, fontWeight: 700, letterSpacing: 1, textTransform: "uppercase", marginTop: 3, color: item.status === "completed" ? "#4ADE80" : item.status === "processing" ? "#C4B5FD" : item.status === "error" ? "#F87171" : "rgba(255,255,255,0.4)" }}>
+                                {item.status === "completed" ? "Listo" : item.status === "processing" ? "Procesando…" : item.status === "error" ? "Error" : "En espera"}
+                              </p>
+                            </div>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              {item.status === "completed" && (
+                                <button onClick={e => { e.stopPropagation(); downloadBatchItem(item); }}
+                                  style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.6)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <Download size={14} strokeWidth={1.75} />
+                                </button>
+                              )}
+                              <button onClick={e => { e.stopPropagation(); setBatchItems(prev => prev.filter(i => i.id !== item.id)); }}
+                                style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <X size={14} strokeWidth={1.75} />
+                              </button>
+                            </div>
+                          </div>
+                          <div style={{ marginTop: 10 }}>{renderBatchItemInputs(item)}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {batchItems.some(i => i.status === "completed") && (
+                      <button onClick={downloadAllBatch}
+                        style={{ height: 44, borderRadius: 12, border: "1px solid rgba(196,181,253,0.2)", background: "transparent", color: "#C4B5FD", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+                        <Download size={15} strokeWidth={1.75} /> Descargar Lote
+                      </button>
+                    )}
+                    {isProcessing && (
+                      <div>
+                        <Progress value={batchProgress} className="h-1.5" />
+                        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 6, fontSize: 10, color: "rgba(255,255,255,0.32)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5 }}>
+                          <span>{batchTimeInfo ? `Transcurrido: ${formatTime(batchTimeInfo.elapsed)}` : "Iniciando…"}</span>
+                          <span style={{ color: "#C4B5FD" }}>{batchTimeInfo?.eta != null ? `~${formatTime(batchTimeInfo.eta)} restantes` : "Calculando…"}</span>
+                        </div>
+                      </div>
+                    )}
+                    <button onClick={runBatch}
+                      disabled={isProcessing || batchItems.every(i => i.status === "completed") || !isFormValid() || batchItems.length === 0}
+                      style={{ width: "100%", height: 54, borderRadius: 12, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 14, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, boxShadow: "0 10px 28px -10px rgba(196,181,253,0.6),inset 0 1px 0 rgba(255,255,255,0.3)", opacity: (isProcessing || batchItems.every(i => i.status === "completed") || !isFormValid() || batchItems.length === 0) ? 0.4 : 1 }}>
+                      {isProcessing ? <><RefreshCw size={17} className="animate-spin" /> Procesando ({Math.round(batchProgress)}%)…</> : <><Sparkles size={17} strokeWidth={1.75} /> Generar {batchItems.length} imagen{batchItems.length !== 1 ? "es" : ""}</>}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           )}
 
-          {/* ── Controls panel ── */}
-          <div className={cn("lg:order-1 space-y-6 flex flex-col transition-all duration-500", isBatchMode ? "lg:col-span-9" : "lg:col-span-4")}>
-            <Card className="glass-card p-5 md:p-6 shadow-xl flex-1 flex flex-col">
-
-              {/* Mode toggle */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 shrink-0">
-                <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-brand-violet">Configuración</h3>
-                <div className="flex bg-black/60 p-1 rounded-2xl border border-white/10 gap-1 w-fit shrink-0">
-                  {["Individual", "Lote"].map((mode, i) => (
-                    <Button key={mode} variant={(!isBatchMode && i === 0) || (isBatchMode && i === 1) ? "secondary" : "ghost"} size="sm"
-                      onClick={() => setIsBatchMode(i === 1)}
-                      className={cn("h-8 text-[10px] px-3 sm:px-4 font-black uppercase tracking-widest transition-all",
-                        ((!isBatchMode && i === 0) || (isBatchMode && i === 1)) ? "bg-white text-black" : "text-white/60 hover:text-white")}>
-                      {mode}
-                    </Button>
+          {/* ── HISTORIAL TAB ─────────────────────────────────────────────── */}
+          {activeTab === "historial" && (
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 28, gap: 20, overflowY: "auto" }} className="custom-scrollbar">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div>
+                  <div style={{ fontSize: 11, color: "#C4B5FD", fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase" }}>Historial</div>
+                  <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 26, fontWeight: 700, marginTop: 2 }}>{history.length} generaciones</div>
+                </div>
+                {history.length > 0 && (
+                  <button onClick={() => setHistory([])}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, border: "none", background: "transparent", color: "rgba(255,255,255,0.2)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    <Trash2 size={13} /> Limpiar todo
+                  </button>
+                )}
+              </div>
+              {history.length > 0 ? (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: 12 }}>
+                  {history.map(item => (
+                    <div key={item.id}
+                      style={{ aspectRatio: "1", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer", position: "relative", transition: "border-color 0.15s" }}
+                      onClick={() => setSelectedHistoryItem(item)}
+                      onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(196,181,253,0.4)")}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}>
+                      <img src={item.result} className="w-full h-full object-cover" />
+                      <div style={{ position: "absolute", bottom: 8, left: 8 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, padding: "3px 7px", borderRadius: 999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", color: "rgba(255,255,255,0.8)" }}>
+                          {STYLES.find(s => s.id === item.style)?.short ?? item.style}
+                        </span>
+                      </div>
+                    </div>
                   ))}
                 </div>
-              </div>
-
-              {/* Style selector */}
-              <div className="space-y-4 mb-6 shrink-0">
-                <label className="text-[10px] font-black text-brand-violet uppercase tracking-[0.3em] block">Tipo de Imagen</label>
-                <div className="grid grid-cols-2 gap-2">
-                  {STYLES.map(s => (
-                    <Button key={s.id} onClick={() => setSelectedStyle(s.id)}
-                      className={cn("h-auto min-h-[52px] py-2 px-3 text-left flex flex-col items-start transition-all duration-300 border active:scale-95",
-                        selectedStyle === s.id ? "bg-white text-black border-white shadow-[0_0_25px_rgba(255,255,255,0.3)]" : "bg-transparent text-white/60 border-brand-violet/20 hover:bg-brand-violet/10")}>
-                      <span className="text-[10px] font-black uppercase tracking-widest leading-tight">{s.label}</span>
-                      <span className={cn("text-[8px] mt-0.5 font-medium leading-tight", selectedStyle === s.id ? "text-black/50" : "text-white/30")}>{s.desc}</span>
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Aspect ratio */}
-              {selectedStyle !== "Video360" && (
-                <div className="space-y-3 mb-4 shrink-0">
-                  <label className="text-[10px] font-black text-brand-violet uppercase tracking-[0.3em] block">Relación de Aspecto</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["1:1", "9:16", "16:9"] as const).map(r => (
-                      <Button key={r} onClick={() => setImageAspectRatio(r)}
-                        className={cn("h-9 text-[10px] font-black uppercase tracking-widest border active:scale-95",
-                          imageAspectRatio === r ? "bg-white text-black border-white" : "bg-transparent text-white/60 border-brand-violet/20 hover:bg-brand-violet/10")}>
-                        {r}
-                      </Button>
-                    ))}
-                  </div>
+              ) : (
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, opacity: 0.25 }}>
+                  <History size={56} strokeWidth={1} />
+                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, margin: 0 }}>Sin historial</p>
                 </div>
               )}
-
-              {/* Output format */}
-              {selectedStyle !== "Video360" && (
-                <div className="space-y-3 mb-6 shrink-0">
-                  <div className="flex items-center justify-between">
-                    <label className="text-[10px] font-black text-brand-violet uppercase tracking-[0.3em]">Formato de Salida</label>
-                    <span className="text-[9px] text-white/20 uppercase tracking-wider">
-                      {outputFormat === "png"  && "Sin pérdida · más pesado"}
-                      {outputFormat === "webp" && "35% más liviano · recomendado"}
-                      {outputFormat === "jpeg" && "Alta compatibilidad · fotos"}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-2">
-                    {([
-                      { id: "png",  label: "PNG",  hint: "Nítido" },
-                      { id: "webp", label: "WebP", hint: "Óptimo" },
-                      { id: "jpeg", label: "JPEG", hint: "Compat." },
-                    ] as { id: OutputFormat; label: string; hint: string }[]).map(f => (
-                      <Button key={f.id} onClick={() => setOutputFormat(f.id)}
-                        className={cn("h-auto py-1.5 flex flex-col items-center border active:scale-95 transition-all",
-                          outputFormat === f.id ? "bg-white text-black border-white" : "bg-transparent text-white/60 border-brand-violet/20 hover:bg-brand-violet/10")}>
-                        <span className="text-[10px] font-black uppercase tracking-widest">{f.label}</span>
-                        <span className={cn("text-[8px] font-medium", outputFormat === f.id ? "text-black/40" : "text-white/25")}>{f.hint}</span>
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex-1 overflow-y-auto pr-1 custom-scrollbar">
-
-                {/* Single mode inputs */}
-                {!isBatchMode && selectedStyle !== "Video360" && (
-                  <div className="pt-4 border-t border-white/5">{renderSingleInputs()}</div>
-                )}
-
-                {/* Video 360 panel */}
-                {!isBatchMode && selectedStyle === "Video360" && (
-                  <div className="space-y-6 pt-6 border-t border-white/10">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-brand-violet">Ángulos del Producto</h3>
-                      {Object.values(video360Angles).some(Boolean) && (
-                        <Button variant="ghost" size="sm" onClick={() => { setVideo360Angles({ frente: null, dorso: null, lateral1: null, lateral2: null }); setVideo360Result(null); }}
-                          className="text-[9px] uppercase font-bold text-red-400/60 hover:text-red-400 h-7">
-                          <Trash2 className="w-3 h-3 mr-1" /> Reiniciar
-                        </Button>
-                      )}
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-[10px] uppercase font-bold text-white/40 tracking-widest">Descripción del Producto (Opcional)</Label>
-                      <Input placeholder="Ej: Mochila azul con diseño de astronauta..." value={productDescription}
-                        onChange={e => setProductDescription(e.target.value)} className="bg-black/40 border-white/5 text-sm" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      {(["frente", "dorso", "lateral1", "lateral2"] as const).map(angle => (
-                        <div key={angle} className="space-y-2">
-                          <Label className="text-[9px] uppercase font-bold text-white/30 tracking-widest">{angle}</Label>
-                          <div className={cn("aspect-square rounded-xl border-2 border-dashed transition-all flex flex-col items-center justify-center overflow-hidden",
-                            video360Angles[angle] ? "border-brand-violet/50 bg-brand-violet/5" : "border-white/10 bg-white/5")}>
-                            {video360Angles[angle]
-                              ? <img src={video360Angles[angle]!.preview} className="w-full h-full object-cover" />
-                              : <><ImageIcon className="w-5 h-5 text-white/20 mb-1" /><span className="text-[8px] text-white/20 uppercase">Vacío</span></>
-                            }
-                          </div>
-                          <div className="flex gap-1">
-                            {[false, true].map(cam => {
-                              const handleUpload = () => {
-                                const inp = document.createElement("input");
-                                inp.type = "file"; inp.accept = "image/*";
-                                if (cam) inp.capture = "environment";
-                                inp.onchange = async (e) => {
-                                  const file = (e.target as HTMLInputElement).files?.[0];
-                                  if (!file) return;
-                                  try {
-                                    const b64 = await compressImage(file);
-                                    setVideo360Angles(prev => ({ ...prev, [angle]: { id: Math.random().toString(36).substr(2, 9), file, preview: b64, status: "pending" } }));
-                                  } catch {
-                                    const reader = new FileReader();
-                                    reader.onload = ev => setVideo360Angles(prev => ({ ...prev, [angle]: { id: Math.random().toString(36).substr(2, 9), file, preview: ev.target?.result as string, status: "pending" } }));
-                                    reader.readAsDataURL(file);
-                                  }
-                                };
-                                inp.click();
-                              };
-                              return (
-                                <Button key={String(cam)} size="sm" variant="outline" className="flex-1 h-7 text-[9px] px-0 border-white/10 hover:bg-white/10" onClick={handleUpload}>
-                                  {cam ? <><Camera className="w-3 h-3 mr-1" />Cámara</> : <><ImageIcon className="w-3 h-3 mr-1" />Galería</>}
-                                </Button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <Button className="btn-premium w-full h-16 bg-brand-violet text-black hover:bg-white"
-                      disabled={isProcessing || !Object.values(video360Angles).some(Boolean)} onClick={handleGenerateVideo360}>
-                      {isProcessing ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" />Procesando ({Math.round(batchProgress)}%)</> : <><Sparkles className="w-4 h-4 mr-2" />{video360Result ? "Regenerar" : "Generar"} Video 360°</>}
-                    </Button>
-                    {video360Result && !isProcessing && (
-                      <Button variant="outline" className="w-full h-12 border-brand-violet/20 text-brand-violet hover:bg-brand-violet/10 font-black uppercase tracking-widest"
-                        onClick={() => downloadUrl(video360Result!, `360-view-${Date.now()}.mp4`)}>
-                        <Download className="w-4 h-4 mr-2" /> Descargar Video
-                      </Button>
-                    )}
-                  </div>
-                )}
-
-                {/* Batch panel */}
-                {isBatchMode && (
-                  <div className="space-y-6 pt-6 border-t border-white/10">
-                    <div className="flex justify-between items-center">
-                      <h3 className="text-[11px] font-black uppercase tracking-[0.2em] text-brand-violet">Imágenes en Lote</h3>
-                      {batchItems.length > 0 && (
-                        <Button variant="ghost" size="sm" onClick={() => { setBatchItems([]); setCsvParsedRows([]); setCsvValidation(null); }}
-                          className="text-[9px] uppercase font-bold text-red-400/60 hover:text-red-400 h-7">
-                          <Trash2 className="w-3 h-3 mr-1" /> Reiniciar Lote
-                        </Button>
-                      )}
-                    </div>
-                    <div
-                      className={cn("border-2 border-dashed rounded-2xl p-6 text-center bg-brand-violet/5 flex flex-col items-center gap-4 transition-colors",
-                        batchDropActive ? "border-brand-violet bg-brand-violet/20" : "border-brand-violet/30")}
-                      onDragOver={e => { e.preventDefault(); setBatchDropActive(true); }}
-                      onDragLeave={() => setBatchDropActive(false)}
-                      onDrop={handleBatchDrop}>
-                      <p className="text-sm font-bold text-white uppercase tracking-widest">
-                        {batchDropActive ? "Soltar imágenes aquí" : "Añadir Imágenes"}
-                      </p>
-                      <div className="flex gap-3 w-full">
-                        <Button variant="outline" onClick={() => batchInputRef.current?.click()}
-                          className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 h-10 text-[10px] uppercase">
-                          <ImageIcon className="w-4 h-4 mr-2" /> Galería
-                        </Button>
-                        <Button onClick={() => batchCameraInputRef.current?.click()}
-                          className="flex-1 bg-brand-violet hover:bg-white text-black h-10 text-[10px] uppercase">
-                          <Camera className="w-4 h-4 mr-2" /> Cámara
-                        </Button>
-                      </div>
-                      <div className="flex gap-2 w-full">
-                        <Button variant="outline" onClick={downloadCsvTemplate}
-                          className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 h-9 text-[10px] uppercase">
-                          <Download className="w-3 h-3 mr-1" /> CSV
-                        </Button>
-                        <Button variant="outline" onClick={downloadXlsxTemplate}
-                          className="flex-1 bg-white/5 hover:bg-white/10 border-white/10 h-9 text-[10px] uppercase">
-                          <Download className="w-3 h-3 mr-1" /> XLSX
-                        </Button>
-                        <Button variant="outline" onClick={() => csvInputRef.current?.click()}
-                          className={cn("flex-1 bg-white/5 hover:bg-white/10 border-white/10 h-9 text-[10px] uppercase", csvParsedRows.length > 0 && "border-brand-violet/40 text-brand-violet")}>
-                          <Upload className="w-3 h-3 mr-1" /> {csvParsedRows.length > 0 ? `(${csvParsedRows.length})` : "Planilla"}
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* CSV validation panel */}
-                    {csvValidation && (csvValidation.unmatchedImages.length > 0 || csvValidation.unmatchedSkus.length > 0) && (
-                      <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/5 p-4 space-y-3">
-                        <div className="flex items-center justify-between">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-yellow-400">Validación SKU</p>
-                          <Button variant="ghost" size="icon" className="h-5 w-5 text-white/20 hover:text-white/60" onClick={() => setCsvValidation(null)}>
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                        {csvValidation.unmatchedImages.length > 0 && (
-                          <div className="space-y-1.5">
-                            <p className="text-[9px] uppercase font-bold text-yellow-300/70 tracking-wider">
-                              Imágenes sin SKU en planilla ({csvValidation.unmatchedImages.length})
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {csvValidation.unmatchedImages.map(name => (
-                                <span key={name} className="text-[9px] bg-yellow-500/10 border border-yellow-500/20 rounded-full px-2 py-0.5 text-yellow-300/80 font-mono">
-                                  {name}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        {csvValidation.unmatchedSkus.length > 0 && (
-                          <div className="space-y-1.5">
-                            <p className="text-[9px] uppercase font-bold text-orange-300/70 tracking-wider">
-                              SKUs en planilla sin imagen ({csvValidation.unmatchedSkus.length})
-                            </p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {csvValidation.unmatchedSkus.map(sku => (
-                                <span key={sku} className="text-[9px] bg-orange-500/10 border border-orange-500/20 rounded-full px-2 py-0.5 text-orange-300/80 font-mono">
-                                  {sku}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {batchItems.length > 0 && (
-                      <>
-                        <ScrollArea className="h-[380px] md:h-[450px] pr-4">
-                          <div className="space-y-3">
-                            {batchItems.map((item, itemIdx) => (
-                              <div key={item.id}
-                                draggable
-                                onDragStart={() => { dragIndex.current = itemIdx; }}
-                                onDragOver={e => { e.preventDefault(); setDragOverId(item.id); }}
-                                onDrop={() => { if (dragIndex.current !== null) reorderBatch(dragIndex.current, itemIdx); dragIndex.current = null; setDragOverId(null); }}
-                                onDragEnd={() => { dragIndex.current = null; setDragOverId(null); }}
-                                className={cn("flex flex-col p-4 bg-black/40 rounded-2xl border transition-all",
-                                  item.status === "completed" ? "border-green-500/40" : item.status === "error" ? "border-red-500/40" : "border-white/10",
-                                  dragOverId === item.id && "border-brand-violet/50 bg-brand-violet/5")}>
-                                <div className="flex items-center gap-3">
-                                  <GripVertical className="w-4 h-4 text-white/20 shrink-0 cursor-grab active:cursor-grabbing" />
-                                  <div className="relative w-14 h-14 rounded-xl overflow-hidden shrink-0 border border-white/20 cursor-pointer"
-                                    onClick={() => item.status === "completed" && item.result && setSelectedHistoryItem({ id: item.id, original: item.preview, result: item.result, style: selectedStyle, timestamp: Date.now(), fileName: item.file.name })}>
-                                    <img src={item.status === "completed" && item.result ? item.result : item.preview} className="w-full h-full object-cover" />
-                                  </div>
-                                  <div className="flex-1 min-w-0">
-                                    <p className="text-xs font-bold truncate text-white">{item.file.name}</p>
-                                    <p className={cn("text-[10px] uppercase font-black tracking-[0.2em] mt-0.5",
-                                      item.status === "completed" ? "text-green-400" : item.status === "processing" ? "text-brand-gold animate-pulse" : item.status === "error" ? "text-red-400" : "text-white/40")}>
-                                      {item.status === "completed" ? "Listo" : item.status === "processing" ? "Procesando" : item.status === "error" ? "Error" : "En espera"}
-                                    </p>
-                                  </div>
-                                  <div className="flex gap-1">
-                                    {item.status === "completed" && (
-                                      <Button variant="outline" size="icon" className="h-8 w-8 border-white/10 text-white/60 hover:text-white"
-                                        onClick={e => { e.stopPropagation(); downloadBatchItem(item); }}>
-                                        <Download className="w-4 h-4" />
-                                      </Button>
-                                    )}
-                                    <Button variant="outline" size="icon" className="h-8 w-8 border-white/10 text-white/30 hover:text-red-400"
-                                      onClick={e => { e.stopPropagation(); setBatchItems(prev => prev.filter(i => i.id !== item.id)); }}>
-                                      <X className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                                <div className="mt-3">{renderBatchItemInputs(item)}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </ScrollArea>
-
-                        <div className="space-y-3">
-                          {batchItems.some(i => i.status === "completed") && (
-                            <Button variant="outline" onClick={downloadAllBatch}
-                              className="w-full h-12 text-[11px] border-brand-violet/20 hover:bg-brand-violet/10 font-black uppercase tracking-[0.2em] text-brand-violet">
-                              <Download className="w-4 h-4 mr-3" /> Descargar Lote
-                            </Button>
-                          )}
-                          {isProcessing && (
-                            <div className="space-y-2">
-                              <Progress value={batchProgress} className="h-1.5 bg-brand-violet/10" />
-                              <div className="flex justify-between items-center">
-                                <span className="text-[9px] text-white/30 uppercase tracking-wider font-bold">
-                                  {batchTimeInfo ? `Transcurrido: ${formatTime(batchTimeInfo.elapsed)}` : "Iniciando..."}
-                                </span>
-                                <span className="text-[9px] uppercase tracking-wider font-bold">
-                                  {batchTimeInfo?.eta != null
-                                    ? <span className="text-brand-violet/70">~{formatTime(batchTimeInfo.eta)} restantes</span>
-                                    : <span className="text-white/20">Calculando...</span>
-                                  }
-                                </span>
-                              </div>
-                            </div>
-                          )}
-                          {!isGoogleAuth && (
-                            <Button variant="outline" onClick={handleConnectDrive}
-                              className="w-full h-12 text-[11px] border-blue-500/30 text-blue-400 hover:bg-blue-500/10 uppercase font-black tracking-[0.2em]">
-                              <Cloud className="w-4 h-4 mr-3" /> Auto-guardado Drive
-                            </Button>
-                          )}
-                          <Button onClick={runBatch} disabled={isProcessing || batchItems.every(i => i.status === "completed") || !isFormValid()}
-                            className="btn-premium w-full h-16 bg-brand-violet text-black hover:bg-white">
-                            {isProcessing ? "Procesando..." : !isFormValid() ? "Completa los campos" : "Iniciar Lote"}
-                          </Button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                )}
-
-                {/* Single generate button */}
-                {!isBatchMode && selectedStyle !== "Video360" && (
-                  <div className="pt-6">
-                    <Button onClick={handleTransform} disabled={!image || isProcessing || !isFormValid()}
-                      className="btn-premium w-full h-16 bg-brand-violet text-black hover:bg-white shadow-[0_20px_40px_-15px_rgba(196,181,253,0.3)]">
-                      {isProcessing ? <RefreshCw className="w-6 h-6 animate-spin" /> : !isFormValid() ? "Completa los campos" : "Crear Imagen"}
-                    </Button>
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
-
-          {/* ── History panel ── */}
-          {!isEmbed && (
-            <div className="lg:col-span-3 lg:order-3 space-y-6 flex flex-col">
-              <Card className="glass-card flex flex-col flex-1 min-h-[500px] lg:min-h-0 shadow-xl">
-                <div className="p-5 border-b border-brand-violet/10 flex items-center justify-between bg-black/20">
-                  <h3 className="text-[11px] font-black uppercase tracking-[0.4em] text-brand-violet flex items-center">
-                    <History className="w-4 h-4 mr-3" /> Historial
-                  </h3>
-                  {history.length > 0 && (
-                    <Button variant="ghost" size="icon" className="h-6 w-6 text-white/10 hover:text-red-400" onClick={() => setHistory([])}>
-                      <Trash2 className="w-3 h-3" />
-                    </Button>
-                  )}
-                </div>
-                <ScrollArea className="flex-1 p-4">
-                  <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-                    {history.map(item => (
-                      <div key={item.id} className="group relative aspect-square lg:aspect-video rounded-xl overflow-hidden border border-white/5 cursor-pointer hover:border-brand-gold/50 transition-all shadow-lg"
-                        onClick={() => setSelectedHistoryItem(item)}>
-                        <img src={item.result} className="w-full h-full object-cover" />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all">
-                          <ImageIcon className="w-5 h-5 text-white mb-1" />
-                          <span className="text-[9px] uppercase font-bold text-white/60">Ver</span>
-                        </div>
-                      </div>
-                    ))}
-                    {!history.length && (
-                      <div className="col-span-2 lg:col-span-1 flex flex-col items-center justify-center py-24 text-white/10">
-                        <History className="w-8 h-8 opacity-20 mb-3" />
-                        <p className="text-[10px] uppercase font-black tracking-[0.3em]">Sin Historial</p>
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              </Card>
             </div>
           )}
         </div>
 
-        {/* ── Preview modal ── */}
+        {/* ── Preview modal ─────────────────────────────────────────────────── */}
         <AnimatePresence>
-          {isPreviewOpen && (result || video360Result) && (
+          {isPreviewOpen && result && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 bg-black/95 backdrop-blur-xl"
+              className="fixed inset-0 z-[100] flex items-center justify-center p-10"
+              style={{ background: "rgba(0,0,0,0.95)", backdropFilter: "blur(20px)" }}
               onClick={() => setIsPreviewOpen(false)}>
-              <Button variant="secondary" size="icon" className="absolute top-6 right-6 rounded-full bg-white/10 hover:bg-white/20 text-white h-12 w-12"
-                onClick={() => setIsPreviewOpen(false)}><X className="w-6 h-6" /></Button>
+              <button style={{ position: "absolute", top: 24, right: 24, width: 48, height: 48, borderRadius: 999, background: "rgba(255,255,255,0.1)", border: "none", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                onClick={() => setIsPreviewOpen(false)}><X size={24} /></button>
               <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
                 className="relative max-w-5xl w-full h-full flex items-center justify-center" onClick={e => e.stopPropagation()}>
-                {selectedStyle === "Video360" && video360Result
-                  ? <video src={video360Result} className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" autoPlay loop muted playsInline />
-                  : <img src={result!} className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" referrerPolicy="no-referrer" />
-                }
+                <img src={result} className="max-w-full max-h-full object-contain rounded-xl shadow-2xl" referrerPolicy="no-referrer" />
               </motion.div>
             </motion.div>
           )}
         </AnimatePresence>
 
-        {/* ── History modal ── */}
+        {/* ── History lightbox ──────────────────────────────────────────────── */}
         <AnimatePresence>
           {selectedHistoryItem && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-10 bg-black/95 backdrop-blur-xl"
+              className="fixed inset-0 z-[100] flex items-center justify-center p-10"
+              style={{ background: "rgba(0,0,0,0.95)", backdropFilter: "blur(20px)" }}
               onClick={() => setSelectedHistoryItem(null)}>
               {history.length > 1 && (
                 <>
-                  <Button variant="ghost" size="icon" className="absolute left-4 top-1/2 -translate-y-1/2 z-20 hidden md:flex h-16 w-16 rounded-full text-white/20 hover:text-white"
+                  <button style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", width: 64, height: 64, borderRadius: 999, background: "transparent", border: "none", color: "rgba(255,255,255,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                     onClick={e => { e.stopPropagation(); const idx = history.findIndex(i => i.id === selectedHistoryItem.id); setSelectedHistoryItem(history[(idx + 1) % history.length]); }}>
-                    <ChevronLeft className="w-10 h-10" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="absolute right-4 top-1/2 -translate-y-1/2 z-20 hidden md:flex h-16 w-16 rounded-full text-white/20 hover:text-white"
+                    <ChevronLeft size={40} />
+                  </button>
+                  <button style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", width: 64, height: 64, borderRadius: 999, background: "transparent", border: "none", color: "rgba(255,255,255,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                     onClick={e => { e.stopPropagation(); const idx = history.findIndex(i => i.id === selectedHistoryItem.id); setSelectedHistoryItem(history[(idx - 1 + history.length) % history.length]); }}>
-                    <ChevronRight className="w-10 h-10" />
-                  </Button>
+                    <ChevronRight size={40} />
+                  </button>
                 </>
               )}
               <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                className="relative max-w-5xl w-full bg-zinc-900/50 rounded-3xl overflow-hidden border border-white/10 shadow-2xl flex flex-col"
+                style={{ position: "relative", maxWidth: "80vw", width: "100%", background: "rgba(11,11,13,0.9)", borderRadius: 22, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 50px 120px -30px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column" }}
                 onClick={e => e.stopPropagation()}>
-                <div className="absolute top-6 right-6 z-10 flex gap-3">
-                  <Button variant="secondary" size="icon" className="rounded-full bg-white/10 hover:bg-white/20 text-white"
+                <div style={{ position: "absolute", top: 24, right: 24, display: "flex", gap: 10, zIndex: 10 }}>
+                  <button style={{ width: 40, height: 40, borderRadius: 999, background: "rgba(255,255,255,0.1)", border: "none", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                     onClick={() => downloadUrl(selectedHistoryItem.result, getFormattedFileName(selectedHistoryItem.fileName || "result", selectedHistoryItem.style))}>
-                    <Download className="w-5 h-5" />
-                  </Button>
-                  <Button variant="secondary" size="icon" className="rounded-full bg-white/10 hover:bg-white/20 text-white" onClick={() => setSelectedHistoryItem(null)}>
-                    <X className="w-5 h-5" />
-                  </Button>
+                    <Download size={18} />
+                  </button>
+                  <button style={{ width: 40, height: 40, borderRadius: 999, background: "rgba(255,255,255,0.1)", border: "none", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                    onClick={() => setSelectedHistoryItem(null)}><X size={18} /></button>
                 </div>
-                <div className="flex-1 overflow-hidden flex items-center justify-center p-6 md:p-12">
-                  <img src={selectedHistoryItem.result} className="max-w-full max-h-[70vh] object-contain rounded-xl shadow-2xl" referrerPolicy="no-referrer" />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 48px 32px" }}>
+                  <img src={selectedHistoryItem.result} style={{ maxWidth: "100%", maxHeight: "65vh", objectFit: "contain", borderRadius: 12, boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }} referrerPolicy="no-referrer" />
                 </div>
-                <div className="p-4 md:p-8 bg-black/40 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 md:gap-6">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-xl overflow-hidden border border-white/10 shrink-0">
+                <div style={{ padding: "20px 32px 28px", background: "rgba(0,0,0,0.4)", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div style={{ width: 52, height: 52, borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
                       <img src={selectedHistoryItem.original} className="w-full h-full object-cover" />
                     </div>
                     <div>
-                      <h4 className="text-white font-bold text-lg">{selectedHistoryItem.fileName}</h4>
-                      <p className="text-white/40 text-xs uppercase tracking-widest mt-1">
-                        {new Date(selectedHistoryItem.timestamp).toLocaleString()} • {selectedHistoryItem.style}
+                      <h4 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{selectedHistoryItem.fileName}</h4>
+                      <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", margin: "4px 0 0", textTransform: "uppercase", letterSpacing: 1 }}>
+                        {new Date(selectedHistoryItem.timestamp).toLocaleString()} · {selectedHistoryItem.style}
                       </p>
                     </div>
                   </div>
-                  <div className="flex gap-4 w-full md:w-auto">
-                    <Button variant="outline" className="flex-1 md:flex-none border-white/10 text-white/60 hover:text-white h-12 px-8 rounded-2xl"
-                      onClick={() => { setImage(selectedHistoryItem.original); setResult(selectedHistoryItem.result); setOriginalFileName(selectedHistoryItem.fileName); setIsBatchMode(false); setSelectedHistoryItem(null); }}>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <button style={{ height: 44, padding: "0 18px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                      onClick={() => { setImage(selectedHistoryItem.original); setResult(selectedHistoryItem.result); setOriginalFileName(selectedHistoryItem.fileName); setActiveTab("crear"); setIsBatchMode(false); setSelectedHistoryItem(null); }}>
                       Editar Ajustes
-                    </Button>
-                    <Button className="flex-1 md:flex-none bg-brand-violet text-black hover:bg-white h-12 px-10 rounded-2xl font-bold"
+                    </button>
+                    <button style={{ height: 44, padding: "0 22px", borderRadius: 12, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 10px 28px -10px rgba(196,181,253,0.6)" }}
                       onClick={() => downloadUrl(selectedHistoryItem.result, getFormattedFileName(selectedHistoryItem.fileName || "result", selectedHistoryItem.style))}>
                       Descargar HD
-                    </Button>
+                    </button>
                   </div>
                 </div>
               </motion.div>
@@ -1450,8 +1322,8 @@ export default function App() {
         </AnimatePresence>
 
         {!isEmbed && (
-          <footer className="w-full mt-12 pt-8 border-t border-white/5 text-center text-white/20 text-[10px] uppercase tracking-widest">
-            <p>© 2026 ProEcom AI • Fondo Blanco Puro • Portada ML • Google Drive Ready</p>
+          <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "20px 0", textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.2)", textTransform: "uppercase", letterSpacing: 2 }}>
+            © 2026 ProEcom AI · Gemini 2.5 Flash · Google Drive Ready
           </footer>
         )}
       </div>
