@@ -1,0 +1,7 @@
+{
+  "name": "ProEditor AI",
+  "description": "Transforma fotos de productos sacadas con el celular en imágenes profesionales de forma rápida y consistente para usar en e-commerce.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
