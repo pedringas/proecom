@@ -22,7 +22,7 @@ import { Textarea } from "@/components/ui/textarea";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Style = "Ecom" | "LifestyleNoHuman" | "Lifestyle" | "Technical" | "Infographic";
-type ActiveTab = "crear" | "lote" | "historial";
+type ActiveTab = "crear" | "lote";
 
 interface HistoryItem {
   id: string;
@@ -171,7 +171,9 @@ export default function App() {
   const [imageAspectRatio, setImageAspectRatio] = useState<"1:1" | "16:9" | "9:16">("1:1");
   const [outputFormat, setOutputFormat] = useState<OutputFormat>("png");
   const [showComparison, setShowComparison] = useState(false);
-  const [activeTab, setActiveTab] = useState<ActiveTab>("crear");
+  const [activeTab, setActiveTab]         = useState<ActiveTab>("crear");
+  const [isHistorialOpen, setIsHistorialOpen] = useState(false);
+  const [historialSearch, setHistorialSearch] = useState("");
 
   // Style-specific inputs
   const [width, setWidth]               = useState("");
@@ -865,20 +867,23 @@ export default function App() {
               <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.06)", flexShrink: 0 }} />
               {/* Nav tabs */}
               <nav className="flex gap-1">
-                {(["Crear", "Por lote", "Historial"] as const).map(label => {
-                  const tab: ActiveTab = label === "Crear" ? "crear" : label === "Por lote" ? "lote" : "historial";
+                {(["Crear", "Por lote"] as const).map(label => {
+                  const tab: ActiveTab = label === "Crear" ? "crear" : "lote";
                   const isActive = activeTab === tab;
                   return (
                     <button key={label}
-                      onClick={() => { setActiveTab(tab); if (tab === "lote") setIsBatchMode(true); else if (tab === "crear") setIsBatchMode(false); }}
+                      onClick={() => { setActiveTab(tab); setIsBatchMode(tab === "lote"); }}
                       style={{ padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, border: "none", cursor: "pointer", background: isActive ? "rgba(255,255,255,0.07)" : "transparent", color: isActive ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", transition: "background 0.15s,color 0.15s" }}>
                       {label}
-                      {label === "Historial" && history.length > 0 && (
-                        <span style={{ marginLeft: 6, fontSize: 11, color: "rgba(255,255,255,0.32)" }}>{history.length}</span>
-                      )}
                     </button>
                   );
                 })}
+                <button
+                  onClick={() => setIsHistorialOpen(true)}
+                  style={{ padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, border: "none", cursor: "pointer", background: "transparent", color: "rgba(255,255,255,0.55)", transition: "background 0.15s,color 0.15s", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  Historial
+                  {history.length > 0 && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.32)" }}>{history.length}</span>}
+                </button>
               </nav>
             </div>
             {/* Right chips */}
@@ -1536,47 +1541,135 @@ export default function App() {
             </div>
           )}
 
-          {/* ── HISTORIAL TAB ─────────────────────────────────────────────── */}
-          {activeTab === "historial" && (
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 28, gap: 20, overflowY: "auto" }} className="custom-scrollbar">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontSize: 11, color: "#C4B5FD", fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase" }}>Historial</div>
-                  <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 26, fontWeight: 700, marginTop: 2 }}>{history.length} generaciones</div>
-                </div>
-                {history.length > 0 && (
-                  <button onClick={() => setHistory([])}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, border: "none", background: "transparent", color: "rgba(255,255,255,0.2)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                    <Trash2 size={13} /> Limpiar todo
-                  </button>
-                )}
-              </div>
-              {history.length > 0 ? (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: 12 }}>
-                  {history.map(item => (
-                    <div key={item.id}
-                      style={{ aspectRatio: "1", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer", position: "relative", transition: "border-color 0.15s" }}
-                      onClick={() => setSelectedHistoryItem(item)}
-                      onMouseEnter={e => (e.currentTarget.style.borderColor = "rgba(196,181,253,0.4)")}
-                      onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)")}>
-                      <img src={item.result} className="w-full h-full object-cover" />
-                      <div style={{ position: "absolute", bottom: 8, left: 8 }}>
-                        <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, padding: "3px 7px", borderRadius: 999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", color: "rgba(255,255,255,0.8)" }}>
-                          {STYLES.find(s => s.id === item.style)?.short ?? item.style}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, opacity: 0.25 }}>
-                  <History size={56} strokeWidth={1} />
-                  <p style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, margin: 0 }}>Sin historial</p>
-                </div>
-              )}
-            </div>
-          )}
         </div>
+
+        {/* ── HISTORIAL OVERLAY ──────────────────────────────────────────────── */}
+        <AnimatePresence>
+          {isHistorialOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(5,5,5,0.85)", backdropFilter: "blur(16px)", display: "flex", alignItems: "stretch" }}
+              onClick={() => setIsHistorialOpen(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{ duration: 0.2 }}
+                style={{ flex: 1, display: "flex", flexDirection: "column", maxWidth: 1200, margin: "40px auto", background: "rgba(11,11,13,0.95)", borderRadius: 22, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 50px 120px -30px rgba(0,0,0,0.8)", overflow: "hidden" }}
+                onClick={e => e.stopPropagation()}
+              >
+                {/* Modal header */}
+                <div style={{ padding: "18px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 16, flexShrink: 0, background: "rgba(0,0,0,0.3)" }}>
+                  <History size={18} strokeWidth={1.75} style={{ color: "#C4B5FD" }} />
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontSize: 14, fontWeight: 700 }}>Historial</span>
+                    <span style={{ fontSize: 12, color: "rgba(255,255,255,0.32)", marginLeft: 10 }}>
+                      {history.length} generaciones
+                    </span>
+                  </div>
+                  {/* Search */}
+                  <div style={{ position: "relative" }}>
+                    <input
+                      value={historialSearch}
+                      onChange={e => setHistorialSearch(e.target.value)}
+                      placeholder="Buscar por nombre…"
+                      style={{ height: 34, padding: "0 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, fontSize: 12, color: "rgba(255,255,255,0.92)", outline: "none", width: 200 }}
+                    />
+                  </div>
+                  {/* Filter chips */}
+                  <div style={{ display: "flex", gap: 4 }}>
+                    {["Todo", ...STYLES.map(s => s.short)].slice(0, 4).map((f, i) => (
+                      <span key={f} style={{ padding: "4px 10px", borderRadius: 8, fontSize: 11.5, fontWeight: 500, background: i === 0 ? "rgba(255,255,255,0.07)" : "transparent", color: i === 0 ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.4)", border: `1px solid ${i === 0 ? "rgba(255,255,255,0.12)" : "transparent"}`, cursor: "pointer" }}>
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                  {history.length > 0 && (
+                    <button onClick={() => setHistory([])}
+                      style={{ padding: "4px 10px", borderRadius: 8, border: "none", background: "transparent", color: "rgba(255,255,255,0.2)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      Limpiar
+                    </button>
+                  )}
+                  <button onClick={() => setIsHistorialOpen(false)}
+                    style={{ width: 36, height: 36, borderRadius: 999, border: "none", background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.6)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <X size={18} strokeWidth={1.75} />
+                  </button>
+                </div>
+
+                {/* Grid */}
+                <div style={{ flex: 1, overflowY: "auto", padding: 24 }} className="custom-scrollbar">
+                  {history.length === 0 ? (
+                    <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, opacity: 0.25 }}>
+                      <History size={64} strokeWidth={1} />
+                      <p style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: 2, margin: 0 }}>Sin historial</p>
+                    </div>
+                  ) : (() => {
+                    const filtered = history.filter(item =>
+                      !historialSearch || item.fileName.toLowerCase().includes(historialSearch.toLowerCase())
+                    );
+
+                    // Group by date
+                    const groups: { label: string; items: HistoryItem[] }[] = [];
+                    const now = new Date();
+                    const todayStr = now.toDateString();
+                    const yesterday = new Date(now); yesterday.setDate(now.getDate() - 1);
+                    const yesterdayStr = yesterday.toDateString();
+
+                    filtered.forEach(item => {
+                      const d = new Date(item.timestamp);
+                      const label = d.toDateString() === todayStr ? "Hoy"
+                        : d.toDateString() === yesterdayStr ? "Ayer"
+                        : d.toLocaleDateString("es-AR", { day: "numeric", month: "long" });
+                      const g = groups.find(g => g.label === label);
+                      if (g) g.items.push(item);
+                      else groups.push({ label, items: [item] });
+                    });
+
+                    return groups.map(group => (
+                      <div key={group.label} style={{ marginBottom: 28 }}>
+                        <div style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase", letterSpacing: 1.4, color: "rgba(255,255,255,0.32)", marginBottom: 12 }}>{group.label}</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(148px,1fr))", gap: 10 }}>
+                          {group.items.map(item => (
+                            <div key={item.id}
+                              style={{ aspectRatio: "1", borderRadius: 12, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", cursor: "pointer", position: "relative", transition: "border-color 0.15s, transform 0.15s" }}
+                              onClick={() => { setSelectedHistoryItem(item); }}
+                              onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(196,181,253,0.5)"; (e.currentTarget as HTMLDivElement).style.transform = "scale(1.02)"; }}
+                              onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.borderColor = "rgba(255,255,255,0.06)"; (e.currentTarget as HTMLDivElement).style.transform = "scale(1)"; }}>
+                              <img src={item.result} className="w-full h-full object-cover" />
+                              {/* Hover overlay */}
+                              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0)", transition: "background 0.15s" }}
+                                onMouseEnter={e => (e.currentTarget.style.background = "rgba(0,0,0,0.4)")}
+                                onMouseLeave={e => (e.currentTarget.style.background = "rgba(0,0,0,0)")}>
+                                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", opacity: 0, transition: "opacity 0.15s" }}
+                                  onMouseEnter={e => { (e.currentTarget as HTMLDivElement).style.opacity = "1"; (e.currentTarget.parentElement as HTMLDivElement).style.background = "rgba(0,0,0,0.4)"; }}
+                                  onMouseLeave={e => { (e.currentTarget as HTMLDivElement).style.opacity = "0"; (e.currentTarget.parentElement as HTMLDivElement).style.background = "rgba(0,0,0,0)"; }}>
+                                  <Eye size={20} style={{ color: "white" }} />
+                                </div>
+                              </div>
+                              <div style={{ position: "absolute", bottom: 7, left: 7, right: 7, display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                                <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: 0.5, padding: "3px 7px", borderRadius: 999, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", color: "rgba(255,255,255,0.8)" }}>
+                                  {STYLES.find(s => s.id === item.style)?.short ?? item.style}
+                                </span>
+                                <button
+                                  onClick={e => { e.stopPropagation(); downloadUrl(item.result, getFormattedFileName(item.fileName || "result", item.style)); }}
+                                  style={{ width: 26, height: 26, borderRadius: 7, border: "none", background: "rgba(0,0,0,0.7)", color: "rgba(255,255,255,0.7)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <Download size={12} strokeWidth={1.75} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* ── Preview modal ─────────────────────────────────────────────────── */}
         <AnimatePresence>
@@ -1642,7 +1735,7 @@ export default function App() {
                   </div>
                   <div style={{ display: "flex", gap: 10 }}>
                     <button style={{ height: 44, padding: "0 18px", borderRadius: 12, border: "1px solid rgba(255,255,255,0.1)", background: "transparent", color: "rgba(255,255,255,0.6)", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-                      onClick={() => { setImage(selectedHistoryItem.original); setResult(selectedHistoryItem.result); setOriginalFileName(selectedHistoryItem.fileName); setActiveTab("crear"); setIsBatchMode(false); setSelectedHistoryItem(null); }}>
+                      onClick={() => { setImage(selectedHistoryItem.original); setResult(selectedHistoryItem.result); setOriginalFileName(selectedHistoryItem.fileName); setActiveTab("crear"); setIsBatchMode(false); setSelectedHistoryItem(null); setIsHistorialOpen(false); }}>
                       Editar Ajustes
                     </button>
                     <button style={{ height: 44, padding: "0 22px", borderRadius: 12, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 13, fontWeight: 700, cursor: "pointer", boxShadow: "0 10px 28px -10px rgba(196,181,253,0.6)" }}
