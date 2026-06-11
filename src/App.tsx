@@ -159,6 +159,17 @@ const compressImage = (file: File, maxWidth = 1024): Promise<string> =>
     img.src = url;
   });
 
+// ─── PanelSection (module-level para evitar remount en cada render) ──────────
+const PanelSection = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
+  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+      <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD" }}>{label}</span>
+      {hint && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.32)" }}>{hint}</span>}
+    </div>
+    {children}
+  </div>
+);
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
   const [image, setImage]                     = useState<string | null>(null);
@@ -715,31 +726,17 @@ export default function App() {
   };
 
   // ── Single mode right panel inputs (required fields first per style) ────────
-  const PanelSection = ({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) => (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-        <span style={{ fontSize: 10.5, fontWeight: 600, textTransform: "uppercase" as const, letterSpacing: 1.4, color: "#C4B5FD" }}>{label}</span>
-        {hint && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.32)" }}>{hint}</span>}
-      </div>
-      {children}
-    </div>
-  );
-
-  const DescField = () => (
-    <PanelSection label="Descripción del Producto" hint="opcional">
-      <Input placeholder="Ej: Zapatillas deportivas rojas Nike" value={productDescription} onChange={e => setProductDescription(e.target.value)}
-        className="h-9 text-xs bg-black/40 border-white/[0.06]" />
-      <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Ayuda a la IA a identificar el producto</p>
-    </PanelSection>
-  );
-
   const renderSingleInputs = () => (
     <AnimatePresence mode="wait">
 
       {/* ── Ecom: desc only ── */}
       {selectedStyle === "Ecom" && (
         <motion.div key="ecom" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
-          <DescField />
+          <PanelSection label="Descripción del Producto" hint="opcional">
+            <Input placeholder="Ej: Zapatillas deportivas rojas Nike" value={productDescription} onChange={e => setProductDescription(e.target.value)}
+              className="h-9 text-xs bg-black/40 border-white/[0.06]" />
+            <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Ayuda a la IA a identificar el producto</p>
+          </PanelSection>
         </motion.div>
       )}
 
@@ -754,7 +751,11 @@ export default function App() {
               {selectedStyle === "LifestyleNoHuman" ? "Estilo portada recomendado por MercadoLibre" : "Describe dónde querés ver el producto"}
             </p>
           </PanelSection>
-          <DescField />
+          <PanelSection label="Descripción del Producto" hint="opcional">
+            <Input placeholder="Ej: Zapatillas deportivas rojas Nike" value={productDescription} onChange={e => setProductDescription(e.target.value)}
+              className="h-9 text-xs bg-black/40 border-white/[0.06]" />
+            <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Ayuda a la IA a identificar el producto</p>
+          </PanelSection>
         </motion.div>
       )}
 
@@ -776,7 +777,11 @@ export default function App() {
               ))}
             </div>
           </PanelSection>
-          <DescField />
+          <PanelSection label="Descripción del Producto" hint="opcional">
+            <Input placeholder="Ej: Zapatillas deportivas rojas Nike" value={productDescription} onChange={e => setProductDescription(e.target.value)}
+              className="h-9 text-xs bg-black/40 border-white/[0.06]" />
+            <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Ayuda a la IA a identificar el producto</p>
+          </PanelSection>
         </motion.div>
       )}
 
@@ -870,7 +875,11 @@ export default function App() {
             </div>
           </PanelSection>
 
-          <DescField />
+          <PanelSection label="Descripción del Producto" hint="opcional">
+            <Input placeholder="Ej: Zapatillas deportivas rojas Nike" value={productDescription} onChange={e => setProductDescription(e.target.value)}
+              className="h-9 text-xs bg-black/40 border-white/[0.06]" />
+            <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Ayuda a la IA a identificar el producto</p>
+          </PanelSection>
         </motion.div>
       )}
     </AnimatePresence>
