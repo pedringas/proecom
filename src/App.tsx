@@ -549,8 +549,9 @@ export default function App() {
         lifestylePrompt, productDescription, aspectRatio: imageAspectRatio,
         infoStyle, infoTemplate
       });
-      setResult(raw);
-      addToHistory(image, raw, selectedStyle, originalFileName);
+      const converted = outputFormat !== "png" ? await convertToFormat(raw, outputFormat) : raw;
+      setResult(converted);
+      addToHistory(image, converted, selectedStyle, originalFileName);
       toast.success("¡Transformación completada!");
     } catch (e: any) {
       const msg = e?.message || "";
@@ -596,9 +597,10 @@ export default function App() {
           aspectRatio: item.aspectRatio || imageAspectRatio,
           infoStyle: item.infoStyle || infoStyle
         }));
-        setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "completed", result: raw } : it));
-        addToHistory(`data:image/jpeg;base64,${b64}`, raw, selectedStyle, item.file.name);
-        if (isGoogleAuth) await handleSaveToDrive(raw, item.file.name);
+        const converted = outputFormat !== "png" ? await convertToFormat(raw, outputFormat) : raw;
+        setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "completed", result: converted } : it));
+        addToHistory(`data:image/jpeg;base64,${b64}`, converted, selectedStyle, item.file.name);
+        if (isGoogleAuth) await handleSaveToDrive(converted, item.file.name);
       } catch {
         setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "error" } : it));
       }
