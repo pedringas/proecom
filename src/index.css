@@ -79,3 +79,12 @@
 
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.3; }
+}
+
+.pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}

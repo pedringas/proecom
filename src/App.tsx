@@ -935,8 +935,9 @@ export default function App() {
                 <Sparkles size={11} strokeWidth={1.75} /> Gemini 2.5
               </span>
               {isGoogleAuth ? (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(74,222,128,0.08)", color: "#4ADE80", border: "1px solid rgba(74,222,128,0.25)", fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500 }}>
-                  <Cloud size={11} strokeWidth={1.75} /> Drive
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: isOffline ? "rgba(248,113,113,0.08)" : "rgba(74,222,128,0.08)", color: isOffline ? "#F87171" : "#4ADE80", border: `1px solid ${isOffline ? "rgba(248,113,113,0.25)" : "rgba(74,222,128,0.25)"}`, fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500 }}>
+                  <span className={isOffline ? "pulse-dot" : ""} style={{ width: 6, height: 6, borderRadius: 999, background: "currentColor", display: "inline-block" }} />
+                  Drive{isOffline ? " · sin conexión" : ""}
                 </span>
               ) : (
                 <button onClick={handleConnectDrive} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500, cursor: "pointer" }}>
@@ -954,7 +955,7 @@ export default function App() {
             <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 40, opacity: 1 }} exit={{ height: 0, opacity: 0 }}
               style={{ background: "rgba(248,113,113,0.12)", borderBottom: "1px solid rgba(248,113,113,0.25)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 18px", flexShrink: 0, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "#F87171" }}>
-                <span style={{ width: 8, height: 8, borderRadius: 999, background: "#F87171", display: "inline-block", animation: "pulse 1.5s ease-in-out infinite" }} />
+                <span className="pulse-dot" style={{ width: 8, height: 8, borderRadius: 999, background: "#F87171", display: "inline-block" }} />
                 Sin conexión — reintentando… Tu trabajo está guardado localmente.
               </div>
               <span style={{ fontSize: 11, color: "rgba(248,113,113,0.6)" }}>Reintentando en 5s</span>
