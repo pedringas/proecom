@@ -1402,9 +1402,15 @@ export default function App() {
                             </div>
                             <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
                               {item.status === "completed" && (
-                                <button onClick={() => downloadBatchItem(item)} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                  <Download size={13} strokeWidth={1.75} />
-                                </button>
+                                <>
+                                  <button onClick={() => item.result && setSelectedHistoryItem({ id: item.id, original: item.preview, result: item.result, style: selectedStyle, timestamp: Date.now(), fileName: item.file.name })}
+                                    style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <Eye size={13} strokeWidth={1.75} />
+                                  </button>
+                                  <button onClick={() => downloadBatchItem(item)} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <Download size={13} strokeWidth={1.75} />
+                                  </button>
+                                </>
                               )}
                               {item.status === "error" && (
                                 <button onClick={() => setBatchItems(prev => prev.map(i => i.id === item.id ? { ...i, status: "pending" } : i))} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(248,113,113,0.3)", background: "rgba(248,113,113,0.06)", color: "#F87171", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -1486,6 +1492,14 @@ export default function App() {
                           <textarea value={item.infoFeatures || ""} onChange={e => upd({ infoFeatures: e.target.value })}
                             placeholder={"Punto 1\nPunto 2\nPunto 3"} rows={3}
                             style={{ ...(!item.infoFeatures?.trim() ? iSErr : iS), height: 56, padding: "5px 8px", resize: "none" as const, lineHeight: 1.4 }} />
+                          <div style={{ display: "flex", gap: 5 }}>
+                            {(["Pop", "Elegante"] as const).map(s => (
+                              <button key={s} onClick={() => upd({ infoStyle: s })}
+                                style={{ flex: 1, height: 26, borderRadius: 6, border: `1px solid ${(item.infoStyle || "Pop") === s ? "rgba(255,255,255,0.25)" : "rgba(255,255,255,0.06)"}`, background: (item.infoStyle || "Pop") === s ? "rgba(255,255,255,0.08)" : "transparent", color: (item.infoStyle || "Pop") === s ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.4)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                                {s === "Pop" ? "Pop 🎨" : "Elegante ✨"}
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       ) : (
                         <input value={item.productDescription || ""} onChange={e => upd({ productDescription: e.target.value })}
@@ -1520,9 +1534,15 @@ export default function App() {
                           </div>
                           <div style={{ display: "flex", justifyContent: "flex-end", gap: 4, paddingTop: 2 }}>
                             {item.status === "completed" && (
-                              <button onClick={() => downloadBatchItem(item)} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <Download size={13} strokeWidth={1.75} />
-                              </button>
+                              <>
+                                <button onClick={() => item.result && setSelectedHistoryItem({ id: item.id, original: item.preview, result: item.result, style: selectedStyle, timestamp: Date.now(), fileName: item.file.name })}
+                                  style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <Eye size={13} strokeWidth={1.75} />
+                                </button>
+                                <button onClick={() => downloadBatchItem(item)} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <Download size={13} strokeWidth={1.75} />
+                                </button>
+                              </>
                             )}
                             <button onClick={() => setBatchItems(prev => prev.filter(i => i.id !== item.id))} style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.06)", background: "transparent", color: "rgba(255,255,255,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                               <X size={13} strokeWidth={1.75} />

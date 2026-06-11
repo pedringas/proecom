@@ -212,16 +212,23 @@ async function generateInfographic(
   if (infoStyle === "Elegante") {
     prompt = `${descPrefix}GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT.
 
+━━━ RULE #1 — PRODUCT FIDELITY (ABSOLUTE, NON-NEGOTIABLE) ━━━
+The product in the final image MUST BE 100% IDENTICAL to the product in the attached reference photo.
+DO NOT regenerate, redesign, reimagine or alter the product in any way.
+Same shape, colors, brand markings, labels, materials and proportions — locked.
+You may only change: the scene/environment around it, lighting, text overlays.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 You are a professional product photographer and art director for a premium brand catalog.
 
 MISSION: Create a HYPERREALISTIC PRODUCT LIFESTYLE PHOTO — not a graphic design, not an illustration, not a collage. A real photograph.
 
-PRODUCT IN USE (MANDATORY):
-Show the product from the attached image actively in use in its natural environment. Examples:
-- A tea canister: open, with tea inside, next to a steaming cup and spoon
-- A yerba canister: open with a wooden scoop, next to a gourd and thermos
-- A toy: being played with in a real room
-The product must feel ALIVE in the scene — not just placed there.
+PRODUCT IN SCENE (MANDATORY):
+Show the exact product from the attached image placed in its natural environment, in use or displayed elegantly. Examples:
+- A tea canister: next to a steaming cup and spoon (product unchanged)
+- A yerba canister: next to a gourd and thermos (product unchanged)
+- A toy: displayed in a real room (product unchanged)
+The product must feel ALIVE in the scene — but its appearance must be 100% faithful to the reference.
 
 SCENE:
 ${infoScenario ? `Use this specific scene: "${infoScenario}"` : "Choose the most aspirational real environment for this product category. Warm natural lighting, soft bokeh background."}
@@ -251,53 +258,37 @@ CRITICAL TEXT RULES:
 
 PRODUCT FIDELITY: 100% faithful — same shape, colors, labels, materials. Never alter the product.`;
   } else {
-    prompt = `${descPrefix}GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT. ${arDescriptions[ar] || ar}. This is the most critical requirement — design everything for this ratio from the start.
+    prompt = `${descPrefix}GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT. ${arDescriptions[ar] || ar}.
 
-You are an expert in e-commerce, visual neuromarketing and conversion optimization for MercadoLibre. Your mission: create the most effective product infographic possible to maximize clicks, trust and conversions.
+━━━ RULE #1 — PRODUCT FIDELITY (ABSOLUTE, NON-NEGOTIABLE) ━━━
+The product shown in the final image MUST BE 100% IDENTICAL to the product in the attached reference photo.
+- DO NOT regenerate, redesign, reimagine or reinterpret the product.
+- DO NOT change its shape, silhouette, color, brand markings, labels, materials or proportions.
+- KEEP the exact product from the reference image. Treat it as a locked asset.
+- You are ONLY allowed to change: the background, typography overlays, decorative graphic elements, and lighting.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-STEP 1 — AUTOMATIC PRODUCT ANALYSIS:
-Before designing, analyze the attached product image and determine:
-- Product category and specific use
-- Target audience and their main purchase motivation
-- Core problem the product solves
-- Visual personality: premium / fun / technical / natural / sporty / etc.
-Use this analysis to make every design decision below.
+You are an expert in e-commerce visual design and conversion optimization for MercadoLibre. Create a compelling product infographic that maximizes clicks and trust.
 
-STEP 2 — CREATIVE DIRECTION (YOU DECIDE):
-Based on your product analysis, freely choose the most impactful visual composition. You are not locked to any fixed layout. You can choose:
-- Background: lifestyle scene, color gradient, abstract pattern, studio white, explosive burst — whatever best serves the product
-- Composition: product centered, off-center, hero left/right, diagonal, floating — whatever maximizes visual impact
-- Color palette: derive from the product's own colors and brand, or choose a complementary palette that elevates it
-- Typography style: 3D bold, clean magazine, handwritten accent, mixed — choose what fits the product's personality
-- Badge/feature style: stickers, floating text, checkmarks, icons, minimal lines — choose what fits the visual direction
+CREATIVE DIRECTION — YOU CHOOSE:
+- Background: gradient, abstract pattern, studio white, color burst — whatever best serves the product (NOT a lifestyle scene with objects)
+- Composition: product centered, hero left/right, floating — whatever maximizes visual impact
+- Color palette: derived from the product's own colors
+- Typography: bold, modern, professional
+- Feature badges: icons, checkmarks, stickers — choose what fits
 
-STEP 3 — MANDATORY TEXT ELEMENTS:
+MANDATORY TEXT ELEMENTS:
 TITLE: "${title}"
-- Render in ALL CAPS, exactly as written above (no word changes, no additions, no omissions — only convert to uppercase)
-- Make it the dominant typographic element, impossible to miss
-- Use an accent line, underline, or decorative element to make it stand out
+- Render in ALL CAPS exactly as written. Make it the dominant typographic element.
 
-FEATURES — render ALL of the following without exception. Do not select, filter, merge or omit any:
-${featureLines.length > 0 ? `${featureList}` : "(no features provided)"}
-- Every feature must be clearly legible and individually distinguishable
-- Use icons, checkmarks, or badges to make each feature scannable at a glance
+FEATURES — render ALL of the following, no exceptions:
+${featureLines.length > 0 ? featureList : "(no features provided)"}
+- Every feature legible and individually distinguishable. Use icons or badges.
 
-STEP 4 — VISUAL STYLE:
-- Photography/rendering: hyperrealistic, high-end commercial quality
-- Product must be rendered with 100% fidelity to the attached reference image (same shape, colors, materials, logos)
-- Typography: modern, bold, professional — no default or generic fonts
-- Overall mood: aspirational, trustworthy, conversion-optimized
-- The final image must look like it was designed by a top-tier MercadoLibre conversion specialist
-
-STEP 5 — CRITICAL TEXT ACCURACY (NON-NEGOTIABLE):
-- Title: every word rendered exactly as given, in ALL CAPS. Do not change, add or remove any word.
-- Features: ALL of them rendered exactly as provided. Do not omit, merge, paraphrase or rewrite any.
-- Copy every number exactly (do not round or alter).
-- Preserve all Spanish accents and special characters (á, é, í, ó, ú, ñ, ü).
-- Do NOT invent any text that was not explicitly provided.
-
-PRODUCT FIDELITY (NON-NEGOTIABLE):
-The product in the final image must be 100% faithful to the attached reference photo — same exact shape, colors, brand markings, materials and proportions. Do not redesign, reimagine or alter the product in any way.`;
+CRITICAL TEXT ACCURACY:
+- Title and features exactly as provided — no changes, no omissions, no paraphrasing.
+- Preserve Spanish accents (á, é, í, ó, ú, ñ). Copy numbers exactly.
+- Do NOT invent any text not explicitly provided.`;
   }
 
 
