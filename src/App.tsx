@@ -209,6 +209,7 @@ export default function App() {
   const [batchItems, setBatchItems]           = useState<BatchItem[]>([]);
   const [isBatchMode, setIsBatchMode]         = useState(false);
   const stopBatchRef                          = useRef(false);
+  const [isStopping, setIsStopping]           = useState(false);
   const [showOriginalItems, setShowOriginalItems] = useState<Set<string>>(new Set());
   const [batchProgress, setBatchProgress] = useState(0);
   const batchStartTime                    = useRef<number | null>(null);
@@ -593,6 +594,7 @@ export default function App() {
   const runBatch = async () => {
     if (!batchItems.length || !isFormValid()) return;
     stopBatchRef.current = false;
+    setIsStopping(false);
     setIsProcessing(true);
     batchStartTime.current = Date.now();
     let done = 0;
@@ -602,7 +604,9 @@ export default function App() {
       setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "processing" } : it));
       try {
         const item = batchItems[i];
+        if (stopBatchRef.current) break;
         const b64  = (await compressImage(item.file)).split(",")[1];
+        if (stopBatchRef.current) break;
         const raw  = await withRetry(() => transformImage(b64, "image/jpeg", selectedStyle, "", {
           width: item.width || width, height: item.height || height, depth: item.depth || depth,
           title: item.infoTitle || infoTitle, features: item.infoFeatures || infoFeatures,
@@ -624,6 +628,7 @@ export default function App() {
     }
     const wasStopped = stopBatchRef.current;
     stopBatchRef.current = false;
+    setIsStopping(false);
     setIsProcessing(false);
     toast.success(wasStopped ? "Lote detenido." : "Procesamiento por lotes finalizado");
   };
@@ -1376,9 +1381,10 @@ export default function App() {
                           {batchTimeInfo?.eta != null ? `~${formatTime(batchTimeInfo.eta)} restantes` : batchTimeInfo ? `${formatTime(batchTimeInfo.elapsed)} transcurridos` : "Iniciando…"}
                         </span>
                         <button
-                          onClick={() => { stopBatchRef.current = true; }}
-                          style={{ height: 32, padding: "0 14px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.35)", background: "rgba(248,113,113,0.08)", color: "#F87171", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                          <X size={13} strokeWidth={2} /> Detener
+                          onClick={() => { stopBatchRef.current = true; setIsStopping(true); }}
+                          disabled={isStopping}
+                          style={{ height: 32, padding: "0 14px", borderRadius: 8, border: `1px solid ${isStopping ? "rgba(255,255,255,0.1)" : "rgba(248,113,113,0.35)"}`, background: isStopping ? "rgba(255,255,255,0.04)" : "rgba(248,113,113,0.08)", color: isStopping ? "rgba(255,255,255,0.35)" : "#F87171", fontSize: 12, fontWeight: 700, cursor: isStopping ? "default" : "pointer", display: "inline-flex", alignItems: "center", gap: 6, transition: "all 0.2s" }}>
+                          <X size={13} strokeWidth={2} /> {isStopping ? "Deteniendo…" : "Detener"}
                         </button>
                       </div>
                     </div>
