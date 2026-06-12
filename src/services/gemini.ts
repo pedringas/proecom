@@ -208,101 +208,47 @@ async function generateInfographic(
     "16:9": "HORIZONTAL/LANDSCAPE FORMAT (16:9) — wide horizontal banner. Design for a wide screen with horizontal composition, product on one side and text on the other",
   };
 
+  const autoTitle = `Write a punchy Spanish sales hook (6-9 words, ALL CAPS) that highlights the main benefit or emotion — NOT the product name. Tone: ${infoStyle === "Elegante" ? "premium and aspirational" : "energetic and action-oriented"}.`;
+  const headlineText = titleProvided ? `"${titleProvided}" (copy exactly, ALL CAPS)` : autoTitle;
+  const featuresText = featureLines.length > 0
+    ? featureLines.map(f => `• ${f}`).join("\n")
+    : "(none provided)";
+
   let prompt = "";
 
   if (infoStyle === "Elegante") {
-    prompt = `${descPrefix}GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT.
+    prompt = `${descPrefix}Create a ${ar} premium product lifestyle infographic for e-commerce.
 
-━━━ RULE #1 — PRODUCT FIDELITY (ABSOLUTE, NON-NEGOTIABLE) ━━━
-The product in the final image MUST BE 100% IDENTICAL to the product in the attached reference photo.
-DO NOT regenerate, redesign, reimagine or alter the product in any way.
-Same shape, colors, brand markings, labels, materials and proportions — locked.
-You may only change: the scene/environment around it, lighting, text overlays.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VISUAL STRUCTURE — build the image in exactly this order from top to bottom:
+1. HEADER STRIP (solid dark or brand-colored band, ~18% height): contains only the headline in large white bold uppercase text. No product visible here.
+2. PRODUCT PHOTO (clean light background, ~55% height): the exact product from the reference image, centered, well-lit. No text of any kind overlaps the product.
+3. FEATURES ROW (bottom ~27%): dark or contrasting strip with the features listed horizontally or in 2 columns. Each feature: small icon + short uppercase label.
 
-You are a professional product photographer and art director for a premium brand catalog.
+HEADLINE: ${headlineText}
 
-MISSION: Create a HYPERREALISTIC PRODUCT LIFESTYLE PHOTO — not a graphic design, not an illustration, not a collage. A real photograph.
+FEATURES (show all, no omissions):
+${featuresText}
 
-PRODUCT IN SCENE (MANDATORY):
-Show the exact product from the attached image placed in its natural environment, in use or displayed elegantly. Examples:
-- A tea canister: next to a steaming cup and spoon (product unchanged)
-- A yerba canister: next to a gourd and thermos (product unchanged)
-- A toy: displayed in a real room (product unchanged)
-The product must feel ALIVE in the scene — but its appearance must be 100% faithful to the reference.
-
-SCENE:
-${infoScenario ? `Use this specific scene: "${infoScenario}"` : "Choose the most aspirational real environment for this product category. Warm natural lighting, soft bokeh background."}
-
-LAYOUT — STRICT ZONES (text must NEVER overlap the product):
-- TOP BAND (~20%): Dedicated strip with its own background. Contains ONLY the title. Product NOT visible in this band.
-- CENTER (~60%): The product in the scene, clearly visible. ABSOLUTELY NO TEXT on top of the product.
-- FEATURES: Placed below the product, on the sides, or in corner areas — NEVER on top of the product.
-
-TITLE (in TOP BAND only, never on the product): ${titleProvided
-  ? `"${titleProvided}" in large bold uppercase sans-serif — copy exactly.`
-  : `Create a short sales hook in Spanish (6-10 words) that combines an emotional trigger with a key benefit. NOT the product name. Style: premium, aspirational. Examples: "VIVÍ LA DIFERENCIA EN CADA DETALLE", "EL COMPLEMENTO QUE SIEMPRE FALTABA", "CALIDAD QUE SE SIENTE DESDE EL PRIMER USO". Large bold uppercase sans-serif.`
-} — choose color that contrasts with the band's background. Title FULLY VISIBLE, never cut off.
-- Thin accent line below the title (1-2px, color derived from product)
-
-FEATURES (placed around/below product, NOT on top) — ALL of them, no omissions:
-${featureLines.length > 0 ? featureList : "(no features provided)"}
-Each feature: bold UPPERCASE label + optional short description. Clean icons. Separated by thin lines.
-- ALL feature text must be in UPPERCASE bold — no lowercase anywhere in the feature list.
-- ALL features provided above must be shown without exception. If there are many features, reduce font size or adjust layout to fit every single one — never omit any.
-
-STYLE RULES:
-- Hyperrealistic photography — not CGI, not illustration
-- Soft professional lighting — warm and natural
-- Premium catalog quality — like a high-end brand shoot
-- NO people, NO hands unless absolutely necessary for context
-- Color palette derived from the product itself
-- Text must be perfectly legible with strong contrast
-
-CRITICAL TEXT RULES:
-- Title ALWAYS in ALL CAPS
-- Copy ALL features EXACTLY as provided — no changes, no omissions
-- Preserve accents (á, é, í, ó, ú, ñ)
-
-PRODUCT FIDELITY: 100% faithful — same shape, colors, labels, materials. Never alter the product.`;
+PRODUCT: use the exact product from the attached photo — same shape, colors, labels, materials. Do not alter it.
+SCENE: ${infoScenario ? `"${infoScenario}"` : "clean studio or subtle premium background, soft warm lighting."}
+STYLE: sophisticated, minimal, premium brand catalog. Muted color palette derived from the product.
+TEXT: all features exactly as written, preserve Spanish accents, no invented text.`;
   } else {
-    const titleInstruction = titleProvided
-      ? `"${titleProvided}" — copy EXACTLY in ALL CAPS, no changes.`
-      : `Create a short sales hook in Spanish (6-10 words) that combines an emotional trigger with a key benefit. Focus on what the customer GAINS or FEELS — NOT just the product name. Style: conversational, energetic, action-oriented. Examples of the tone: "HORAS DE DIVERSIÓN GARANTIZADAS EN FAMILIA", "EL REGALO QUE TUS HIJOS VAN A AMAR", "SENTÍ LA DIFERENCIA DESDE EL PRIMER USO". Render in ALL CAPS.`;
+    prompt = `${descPrefix}Create a ${ar} bold e-commerce product infographic card.
 
-    prompt = `${descPrefix}GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT. ${arDescriptions[ar] || ar}.
+VISUAL STRUCTURE — build the image in exactly this order from top to bottom:
+1. HEADER BAND (vivid solid color, ~18% height): headline text only in large white bold uppercase. No product here.
+2. PRODUCT ZONE (clean gradient or solid background, ~55% height): the exact product from the reference image centered and fully visible. Zero text overlaps the product — this zone is text-free.
+3. FEATURES STRIP (bottom ~27%): contrasting background with all features. Layout: 2 columns or horizontal row. Each feature: emoji or icon + short uppercase label.
 
-CRITICAL — PRODUCT FIDELITY:
-The product in the final image must be 100% identical to the product in the attached photo.
-DO NOT alter, redesign, reimagine or replace it. Same shape, colors, markings, materials. Locked asset.
+HEADLINE: ${headlineText}
 
-CRITICAL — LAYOUT STRUCTURE (follow exactly, no exceptions):
-Design this as a professional e-commerce infographic card with THREE visually distinct, non-overlapping sections:
+FEATURES (show every single one, no omissions):
+${featuresText}
 
-[SECTION 1 — TOP HEADER BAR, approximately top 18-22% of the image]
-- A solid or gradient colored banner/strip that spans the full width.
-- This strip has its OWN background color — the product is NOT visible behind it.
-- Contains ONLY the headline text, large and bold, centered.
-- Think of it like a colored label sticker attached to the TOP of the product card.
-
-[SECTION 2 — PRODUCT AREA, approximately middle 55-65% of the image]
-- The product from the reference photo, centered, clean background.
-- THIS AREA IS TEXT-FREE. Zero text, zero labels, zero icons inside this section.
-- The product must be fully visible and unobscured.
-
-[SECTION 3 — FEATURES AREA, remaining space (sides, bottom, or both)]
-- Feature badges/pills placed OUTSIDE the product area: left column, right column, or bottom strip.
-- Each feature: icon + short label. Clean, scannable, high contrast.
-- Features connect to the product visually via thin lines or arrows pointing TOWARD it from the sides.
-
-HEADLINE (Section 1 only): ${titleInstruction}
-
-FEATURES (Section 3 only) — include ALL, no omissions, no paraphrasing:
-${featureLines.length > 0 ? featureList : "(no features provided)"}
-
-STYLE: Bold e-commerce graphic design. Color palette from the product. Professional typography.
-
-TEXT ACCURACY: Copy all features exactly as written. Preserve Spanish accents. Do not invent text.`;
+PRODUCT: use the exact product from the attached photo — same shape, colors, labels, materials. Do not alter it.
+STYLE: vibrant, bold, high-energy e-commerce graphic. Color palette from the product's dominant colors.
+TEXT: all features exactly as written, preserve Spanish accents, no invented text.`;
   }
 
 
