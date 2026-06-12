@@ -239,9 +239,9 @@ LAYOUT — STRICT ZONES (text must NEVER overlap the product):
 - CENTER (~60%): The product in the scene, clearly visible. ABSOLUTELY NO TEXT on top of the product.
 - FEATURES: Placed below the product, on the sides, or in corner areas — NEVER on top of the product.
 
-TITLE (in TOP BAND only): ${titleProvided
-  ? `"${titleProvided}" in large bold uppercase sans-serif`
-  : "Generate a compelling, short product title (3-7 words max) based on the product and description. Large bold uppercase sans-serif."
+TITLE (in TOP BAND only, never on the product): ${titleProvided
+  ? `"${titleProvided}" in large bold uppercase sans-serif — copy exactly.`
+  : `Create a short sales hook in Spanish (6-10 words) that combines an emotional trigger with a key benefit. NOT the product name. Style: premium, aspirational. Examples: "VIVÍ LA DIFERENCIA EN CADA DETALLE", "EL COMPLEMENTO QUE SIEMPRE FALTABA", "CALIDAD QUE SE SIENTE DESDE EL PRIMER USO". Large bold uppercase sans-serif.`
 } — choose color that contrasts with the band's background. Title FULLY VISIBLE, never cut off.
 - Thin accent line below the title (1-2px, color derived from product)
 
@@ -266,56 +266,43 @@ CRITICAL TEXT RULES:
 
 PRODUCT FIDELITY: 100% faithful — same shape, colors, labels, materials. Never alter the product.`;
   } else {
+    const titleInstruction = titleProvided
+      ? `"${titleProvided}" — copy EXACTLY in ALL CAPS, no changes.`
+      : `Create a short sales hook in Spanish (6-10 words) that combines an emotional trigger with a key benefit. Focus on what the customer GAINS or FEELS — NOT just the product name. Style: conversational, energetic, action-oriented. Examples of the tone: "HORAS DE DIVERSIÓN GARANTIZADAS EN FAMILIA", "EL REGALO QUE TUS HIJOS VAN A AMAR", "SENTÍ LA DIFERENCIA DESDE EL PRIMER USO". Render in ALL CAPS.`;
+
     prompt = `${descPrefix}GENERATE THIS IMAGE IN EXACTLY ${ar} FORMAT. ${arDescriptions[ar] || ar}.
 
-━━━ RULE #1 — PRODUCT FIDELITY (ABSOLUTE, NON-NEGOTIABLE) ━━━
-The product shown in the final image MUST BE 100% IDENTICAL to the product in the attached reference photo.
-- DO NOT regenerate, redesign, reimagine or reinterpret the product.
-- DO NOT change its shape, silhouette, color, brand markings, labels, materials or proportions.
-- KEEP the exact product from the reference image. Treat it as a locked asset.
-- You are ONLY allowed to change: the background behind it, typography in separate zones, and decorative graphic elements.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CRITICAL — PRODUCT FIDELITY:
+The product in the final image must be 100% identical to the product in the attached photo.
+DO NOT alter, redesign, reimagine or replace it. Same shape, colors, markings, materials. Locked asset.
 
-━━━ RULE #2 — LAYOUT ZONES (MANDATORY) ━━━
-The image MUST be divided into SEPARATE, NON-OVERLAPPING zones. Text MUST NEVER be placed on top of the product.
+CRITICAL — LAYOUT STRUCTURE (follow exactly, no exceptions):
+Design this as a professional e-commerce infographic card with THREE visually distinct, non-overlapping sections:
 
-ZONE A — TITLE BAND (top ~20% of image):
-- A clearly defined header strip with its own background color/gradient.
-- Contains ONLY the title text. Nothing else overlaps into this zone.
-- The title must be fully readable against the band's own background — no product visible behind it.
+[SECTION 1 — TOP HEADER BAR, approximately top 18-22% of the image]
+- A solid or gradient colored banner/strip that spans the full width.
+- This strip has its OWN background color — the product is NOT visible behind it.
+- Contains ONLY the headline text, large and bold, centered.
+- Think of it like a colored label sticker attached to the TOP of the product card.
 
-ZONE B — PRODUCT ZONE (center ~60% of image):
-- The product from the reference image, centered and clearly visible.
-- ABSOLUTELY NO TEXT may overlap or appear on top of the product in this zone.
-- Background can be a color, gradient or pattern — but the product must be unobscured.
+[SECTION 2 — PRODUCT AREA, approximately middle 55-65% of the image]
+- The product from the reference photo, centered, clean background.
+- THIS AREA IS TEXT-FREE. Zero text, zero labels, zero icons inside this section.
+- The product must be fully visible and unobscured.
 
-ZONE C — FEATURES ZONE (surrounding sides, bottom strip, or corner areas):
-- Feature badges, icons and labels placed to the LEFT, RIGHT or BOTTOM of the product.
-- Each feature: small icon + short text label. Clean and scannable.
-- Features must NOT overlap the product.
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[SECTION 3 — FEATURES AREA, remaining space (sides, bottom, or both)]
+- Feature badges/pills placed OUTSIDE the product area: left column, right column, or bottom strip.
+- Each feature: icon + short label. Clean, scannable, high contrast.
+- Features connect to the product visually via thin lines or arrows pointing TOWARD it from the sides.
 
-CREATIVE DIRECTION — YOU CHOOSE (within the zone structure above):
-- Background in Zone B: gradient, abstract pattern, studio white, color burst — whatever best serves the product
-- Color palette: derived from the product's own colors
-- Typography: bold, modern, professional
-- Feature badge style: icons, checkmarks, stickers — choose what fits
+HEADLINE (Section 1 only): ${titleInstruction}
 
-MANDATORY TEXT ELEMENTS:
-TITLE (goes in ZONE A only): ${titleProvided
-  ? `"${titleProvided}" — render in ALL CAPS exactly as written.`
-  : "Generate a compelling, short product title (3-7 words) based on the product image and description. Render in ALL CAPS."
-}
-
-FEATURES (go in ZONE C only) — render ALL of the following, no exceptions:
+FEATURES (Section 3 only) — include ALL, no omissions, no paraphrasing:
 ${featureLines.length > 0 ? featureList : "(no features provided)"}
-- Every feature legible and individually distinguishable. Use icons or badges.
-- Place them around the product, NOT on top of it.
 
-CRITICAL TEXT ACCURACY:
-- Title and features exactly as provided — no changes, no omissions, no paraphrasing.
-- Preserve Spanish accents (á, é, í, ó, ú, ñ). Copy numbers exactly.
-- Do NOT invent any text not explicitly provided.`;
+STYLE: Bold e-commerce graphic design. Color palette from the product. Professional typography.
+
+TEXT ACCURACY: Copy all features exactly as written. Preserve Spanish accents. Do not invent text.`;
   }
 
 
