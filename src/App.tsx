@@ -206,8 +206,10 @@ export default function App() {
   const [isDriveOnboardingOpen, setIsDriveOnboardingOpen] = useState(false);
 
   // Batch
-  const [batchItems, setBatchItems]       = useState<BatchItem[]>([]);
-  const [isBatchMode, setIsBatchMode]     = useState(false);
+  const [batchItems, setBatchItems]           = useState<BatchItem[]>([]);
+  const [isBatchMode, setIsBatchMode]         = useState(false);
+  const stopBatchRef                          = useRef(false);
+  const [showOriginalItems, setShowOriginalItems] = useState<Set<string>>(new Set());
   const [batchProgress, setBatchProgress] = useState(0);
   const batchStartTime                    = useRef<number | null>(null);
   const [batchTimeInfo, setBatchTimeInfo] = useState<{ elapsed: number; eta: number | null } | null>(null);
@@ -590,10 +592,12 @@ export default function App() {
   // ── Batch run ─────────────────────────────────────────────────────────────
   const runBatch = async () => {
     if (!batchItems.length || !isFormValid()) return;
+    stopBatchRef.current = false;
     setIsProcessing(true);
     batchStartTime.current = Date.now();
     let done = 0;
     for (let i = 0; i < batchItems.length; i++) {
+      if (stopBatchRef.current) break;
       if (batchItems[i].status === "completed") continue;
       setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "processing" } : it));
       try {
@@ -618,8 +622,10 @@ export default function App() {
       done++;
       setBatchProgress(done / batchItems.length * 100);
     }
+    const wasStopped = stopBatchRef.current;
+    stopBatchRef.current = false;
     setIsProcessing(false);
-    toast.success("Procesamiento por lotes finalizado");
+    toast.success(wasStopped ? "Lote detenido." : "Procesamiento por lotes finalizado");
   };
 
   // ── Drive ─────────────────────────────────────────────────────────────────
@@ -1353,7 +1359,7 @@ export default function App() {
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 12, minHeight: 0 }}>
                   {/* Big fraction strip */}
                   <div style={{ padding: 16, borderRadius: 16, background: "linear-gradient(135deg,rgba(196,181,253,0.08),rgba(196,181,253,0.02))", border: "1px solid rgba(196,181,253,0.18)", display: "flex", flexDirection: "column", gap: 10, flexShrink: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
                         <span style={{ fontFamily: '"Playfair Display",serif', fontSize: 28, fontWeight: 700, color: "#C4B5FD", fontVariantNumeric: "tabular-nums" }}>
                           {batchItems.filter(i => i.status === "completed" || i.status === "error").length} / {batchItems.length}
@@ -1365,9 +1371,16 @@ export default function App() {
                           {batchItems.filter(i => i.status === "pending").length > 0 && ` · ${batchItems.filter(i => i.status === "pending").length} en cola`}
                         </span>
                       </div>
-                      <span style={{ fontSize: 12, color: "rgba(255,255,255,0.32)", fontVariantNumeric: "tabular-nums" }}>
-                        {batchTimeInfo?.eta != null ? `~${formatTime(batchTimeInfo.eta)} restantes` : batchTimeInfo ? `${formatTime(batchTimeInfo.elapsed)} transcurridos` : "Iniciando…"}
-                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.32)", fontVariantNumeric: "tabular-nums" }}>
+                          {batchTimeInfo?.eta != null ? `~${formatTime(batchTimeInfo.eta)} restantes` : batchTimeInfo ? `${formatTime(batchTimeInfo.elapsed)} transcurridos` : "Iniciando…"}
+                        </span>
+                        <button
+                          onClick={() => { stopBatchRef.current = true; }}
+                          style={{ height: 32, padding: "0 14px", borderRadius: 8, border: "1px solid rgba(248,113,113,0.35)", background: "rgba(248,113,113,0.08)", color: "#F87171", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <X size={13} strokeWidth={2} /> Detener
+                        </button>
+                      </div>
                     </div>
                     {/* Multicolor bar */}
                     <div style={{ height: 6, borderRadius: 999, background: "rgba(255,255,255,0.06)", overflow: "hidden", display: "flex" }}>
@@ -1391,7 +1404,7 @@ export default function App() {
                         return (
                           <div key={item.id} style={{ display: "grid", gridTemplateColumns: "44px 1fr 120px 1fr 80px", gap: 12, padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", alignItems: "center", background: item.status === "processing" ? "rgba(196,181,253,0.04)" : item.status === "error" ? "rgba(248,113,113,0.04)" : item.status === "completed" ? "rgba(74,222,128,0.025)" : "transparent" }}>
                             <div style={{ position: "relative", width: 40, height: 40, borderRadius: 8, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }}>
-                              <img src={item.status === "completed" && item.result ? item.result : item.preview} className="w-full h-full object-cover" />
+                              <img src={showOriginalItems.has(item.id) ? item.preview : (item.status === "completed" && item.result ? item.result : item.preview)} className="w-full h-full object-cover" />
                               {item.status === "completed" && <div style={{ position: "absolute", inset: 0, background: "rgba(74,222,128,0.18)", display: "flex", alignItems: "center", justifyContent: "center", color: "#4ADE80" }}><Check size={16} /></div>}
                             </div>
                             <div style={{ minWidth: 0 }}>
@@ -1412,6 +1425,12 @@ export default function App() {
                             <div style={{ display: "flex", justifyContent: "flex-end", gap: 4 }}>
                               {item.status === "completed" && (
                                 <>
+                                  <button
+                                    onClick={() => setShowOriginalItems(prev => { const next = new Set(prev); next.has(item.id) ? next.delete(item.id) : next.add(item.id); return next; })}
+                                    title={showOriginalItems.has(item.id) ? "Ver resultado" : "Ver original"}
+                                    style={{ width: 28, height: 28, borderRadius: 7, border: `1px solid ${showOriginalItems.has(item.id) ? "rgba(196,181,253,0.4)" : "rgba(255,255,255,0.08)"}`, background: showOriginalItems.has(item.id) ? "rgba(196,181,253,0.1)" : "transparent", color: showOriginalItems.has(item.id) ? "#C4B5FD" : "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <History size={13} strokeWidth={1.75} />
+                                  </button>
                                   <button onClick={() => item.result && setSelectedHistoryItem({ id: item.id, original: item.preview, result: item.result, style: selectedStyle, timestamp: Date.now(), fileName: item.file.name })}
                                     style={{ width: 28, height: 28, borderRadius: 7, border: "1px solid rgba(255,255,255,0.08)", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                     <Eye size={13} strokeWidth={1.75} />
