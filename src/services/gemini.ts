@@ -234,14 +234,18 @@ The product must feel ALIVE in the scene — but its appearance must be 100% fai
 SCENE:
 ${infoScenario ? `Use this specific scene: "${infoScenario}"` : "Choose the most aspirational real environment for this product category. Warm natural lighting, soft bokeh background."}
 
-TEXT OVERLAY (render directly on the photo):
-- TOP of image: ${titleProvided
-  ? `Title "${titleProvided}" in large bold uppercase sans-serif`
-  : "Generate a compelling, short product title (3-7 words max) based on the product image and description. Use large bold uppercase sans-serif."
-} — dark color or white with drop shadow, whichever contrasts better. NO background box behind text.
-- CRITICAL: The title must be FULLY VISIBLE and NEVER cut off. Leave sufficient padding/margin from edges.
+LAYOUT — STRICT ZONES (text must NEVER overlap the product):
+- TOP BAND (~20%): Dedicated strip with its own background. Contains ONLY the title. Product NOT visible in this band.
+- CENTER (~60%): The product in the scene, clearly visible. ABSOLUTELY NO TEXT on top of the product.
+- FEATURES: Placed below the product, on the sides, or in corner areas — NEVER on top of the product.
+
+TITLE (in TOP BAND only): ${titleProvided
+  ? `"${titleProvided}" in large bold uppercase sans-serif`
+  : "Generate a compelling, short product title (3-7 words max) based on the product and description. Large bold uppercase sans-serif."
+} — choose color that contrasts with the band's background. Title FULLY VISIBLE, never cut off.
 - Thin accent line below the title (1-2px, color derived from product)
-- Features listed below or beside, ALL of them, no omissions:
+
+FEATURES (placed around/below product, NOT on top) — ALL of them, no omissions:
 ${featureLines.length > 0 ? featureList : "(no features provided)"}
 Each feature: bold UPPERCASE label + optional short description. Clean icons. Separated by thin lines.
 - ALL feature text must be in UPPERCASE bold — no lowercase anywhere in the feature list.
@@ -269,27 +273,44 @@ The product shown in the final image MUST BE 100% IDENTICAL to the product in th
 - DO NOT regenerate, redesign, reimagine or reinterpret the product.
 - DO NOT change its shape, silhouette, color, brand markings, labels, materials or proportions.
 - KEEP the exact product from the reference image. Treat it as a locked asset.
-- You are ONLY allowed to change: the background, typography overlays, decorative graphic elements, and lighting.
+- You are ONLY allowed to change: the background behind it, typography in separate zones, and decorative graphic elements.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-You are an expert in e-commerce visual design and conversion optimization for MercadoLibre. Create a compelling product infographic that maximizes clicks and trust.
+━━━ RULE #2 — LAYOUT ZONES (MANDATORY) ━━━
+The image MUST be divided into SEPARATE, NON-OVERLAPPING zones. Text MUST NEVER be placed on top of the product.
 
-CREATIVE DIRECTION — YOU CHOOSE:
-- Background: gradient, abstract pattern, studio white, color burst — whatever best serves the product (NOT a lifestyle scene with objects)
-- Composition: product centered, hero left/right, floating — whatever maximizes visual impact
+ZONE A — TITLE BAND (top ~20% of image):
+- A clearly defined header strip with its own background color/gradient.
+- Contains ONLY the title text. Nothing else overlaps into this zone.
+- The title must be fully readable against the band's own background — no product visible behind it.
+
+ZONE B — PRODUCT ZONE (center ~60% of image):
+- The product from the reference image, centered and clearly visible.
+- ABSOLUTELY NO TEXT may overlap or appear on top of the product in this zone.
+- Background can be a color, gradient or pattern — but the product must be unobscured.
+
+ZONE C — FEATURES ZONE (surrounding sides, bottom strip, or corner areas):
+- Feature badges, icons and labels placed to the LEFT, RIGHT or BOTTOM of the product.
+- Each feature: small icon + short text label. Clean and scannable.
+- Features must NOT overlap the product.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CREATIVE DIRECTION — YOU CHOOSE (within the zone structure above):
+- Background in Zone B: gradient, abstract pattern, studio white, color burst — whatever best serves the product
 - Color palette: derived from the product's own colors
 - Typography: bold, modern, professional
-- Feature badges: icons, checkmarks, stickers — choose what fits
+- Feature badge style: icons, checkmarks, stickers — choose what fits
 
 MANDATORY TEXT ELEMENTS:
-TITLE: ${titleProvided
-  ? `"${titleProvided}" — render in ALL CAPS exactly as written. Make it the dominant typographic element.`
-  : "Generate a compelling, short product title (3-7 words) based on the product image and description. Render in ALL CAPS. Make it the dominant typographic element."
+TITLE (goes in ZONE A only): ${titleProvided
+  ? `"${titleProvided}" — render in ALL CAPS exactly as written.`
+  : "Generate a compelling, short product title (3-7 words) based on the product image and description. Render in ALL CAPS."
 }
 
-FEATURES — render ALL of the following, no exceptions:
+FEATURES (go in ZONE C only) — render ALL of the following, no exceptions:
 ${featureLines.length > 0 ? featureList : "(no features provided)"}
 - Every feature legible and individually distinguishable. Use icons or badges.
+- Place them around the product, NOT on top of it.
 
 CRITICAL TEXT ACCURACY:
 - Title and features exactly as provided — no changes, no omissions, no paraphrasing.
