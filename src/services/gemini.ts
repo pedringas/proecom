@@ -184,7 +184,8 @@ async function generateInfographic(
     [key: string]: unknown;
   }
 ): Promise<string> {
-  const title = extraData?.title || "";
+  const titleProvided = (extraData?.title || "").trim();
+  const title = titleProvided;
   const features = (extraData?.features as string) || "";
   const infoStyle = extraData?.infoStyle || "Pop";
   const ar = (extraData?.aspectRatio as string) || "1:1";
@@ -234,8 +235,11 @@ SCENE:
 ${infoScenario ? `Use this specific scene: "${infoScenario}"` : "Choose the most aspirational real environment for this product category. Warm natural lighting, soft bokeh background."}
 
 TEXT OVERLAY (render directly on the photo):
-- TOP of image: Title "${title}" in large bold uppercase sans-serif, dark color or white with drop shadow — choose whichever contrasts better with the background. NO background box behind text.
-- CRITICAL: The title must be FULLY VISIBLE and NEVER cut off. Leave sufficient padding/margin from the top and side edges so every character of the title is completely readable within the image bounds.
+- TOP of image: ${titleProvided
+  ? `Title "${titleProvided}" in large bold uppercase sans-serif`
+  : "Generate a compelling, short product title (3-7 words max) based on the product image and description. Use large bold uppercase sans-serif."
+} — dark color or white with drop shadow, whichever contrasts better. NO background box behind text.
+- CRITICAL: The title must be FULLY VISIBLE and NEVER cut off. Leave sufficient padding/margin from edges.
 - Thin accent line below the title (1-2px, color derived from product)
 - Features listed below or beside, ALL of them, no omissions:
 ${featureLines.length > 0 ? featureList : "(no features provided)"}
@@ -278,8 +282,10 @@ CREATIVE DIRECTION — YOU CHOOSE:
 - Feature badges: icons, checkmarks, stickers — choose what fits
 
 MANDATORY TEXT ELEMENTS:
-TITLE: "${title}"
-- Render in ALL CAPS exactly as written. Make it the dominant typographic element.
+TITLE: ${titleProvided
+  ? `"${titleProvided}" — render in ALL CAPS exactly as written. Make it the dominant typographic element.`
+  : "Generate a compelling, short product title (3-7 words) based on the product image and description. Render in ALL CAPS. Make it the dominant typographic element."
+}
 
 FEATURES — render ALL of the following, no exceptions:
 ${featureLines.length > 0 ? featureList : "(no features provided)"}

@@ -515,12 +515,12 @@ export default function App() {
       if (!batchItems.length) return false;
       return batchItems.every(item => {
         if (selectedStyle === "Technical")   return item.width?.trim() && item.height?.trim() && item.depth?.trim();
-        if (selectedStyle === "Infographic") return item.infoTitle?.trim() && item.infoFeatures?.trim();
+        if (selectedStyle === "Infographic") return item.infoFeatures?.trim();
         return true;
       });
     }
     if (selectedStyle === "Technical")   return width.trim() !== "" && height.trim() !== "" && depth.trim() !== "";
-    if (selectedStyle === "Infographic") return infoTitle.trim() !== "" && infoFeatures.trim() !== "";
+    if (selectedStyle === "Infographic") return infoFeatures.trim() !== "";
     return true;
   };
 
@@ -791,9 +791,9 @@ export default function App() {
           style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
           {/* Título */}
-          <PanelSection label="Título" hint="encabezado">
+          <PanelSection label="Título" hint="opcional — la IA lo genera si lo dejás vacío">
             <Input placeholder="Ej: Sonido que se siente" value={infoTitle} onChange={e => setInfoTitle(e.target.value)}
-              className={cn("h-9 text-xs bg-black/40", !infoTitle.trim() ? "border-red-500/40" : "border-white/[0.06]")} />
+              className="h-9 text-xs bg-black/40 border-white/[0.06]" />
           </PanelSection>
 
           {/* Puntos */}
@@ -1497,7 +1497,7 @@ export default function App() {
                       ) : selectedStyle === "Infographic" ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
                           <input value={item.infoTitle || ""} onChange={e => upd({ infoTitle: e.target.value })}
-                            placeholder="Título *" style={!item.infoTitle?.trim() ? iSErr : iS} />
+                            placeholder="Título (opcional)" style={iS} />
                           <textarea value={item.infoFeatures || ""} onChange={e => upd({ infoFeatures: e.target.value })}
                             placeholder={"Punto 1\nPunto 2\nPunto 3"} rows={3}
                             style={{ ...(!item.infoFeatures?.trim() ? iSErr : iS), height: 56, padding: "5px 8px", resize: "none" as const, lineHeight: 1.4 }} />
