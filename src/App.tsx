@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { transformImage } from "@/src/services/gemini";
+import { transformImage, type InfographicLayout, type InfographicFeature } from "@/src/services/gemini";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -44,6 +44,7 @@ interface BatchItem {
   height?: string;
   depth?: string;
   infoTitle?: string;
+  infoSubtitle?: string;
   infoFeatures?: string;
   infoScenario?: string;
   lifestylePrompt?: string;
@@ -194,7 +195,13 @@ export default function App() {
   const [infoFeatures, setInfoFeatures] = useState("");
   const [infoScenario, setInfoScenario] = useState("");
   const [infoStyle, setInfoStyle]         = useState<"Pop" | "Elegante">("Pop");
-  const [infoTemplate, setInfoTemplate]   = useState<"laterales" | "tira" | "grilla">("laterales");
+  const [infographicLayout, setInfographicLayout] = useState<InfographicLayout>("left_dark_panel");
+  const [infoSubtitle, setInfoSubtitle]   = useState("");
+  const [infoFeaturesArr, setInfoFeaturesArr] = useState<InfographicFeature[]>([
+    { icon: "circle", title: "", description: "" },
+    { icon: "circle", title: "", description: "" },
+    { icon: "circle", title: "", description: "" },
+  ]);
   const [lifestylePrompt, setLifestylePrompt]       = useState("");
   const [productDescription, setProductDescription] = useState("");
 
@@ -523,7 +530,7 @@ export default function App() {
       });
     }
     if (selectedStyle === "Technical")   return width.trim() !== "" && height.trim() !== "" && depth.trim() !== "";
-    if (selectedStyle === "Infographic") return infoFeatures.trim() !== "";
+    if (selectedStyle === "Infographic") return infoFeaturesArr.some(f => f.title.trim());
     return true;
   };
 
@@ -559,9 +566,11 @@ export default function App() {
     try {
       const raw = await transformImage(image.split(",")[1], mimeType, selectedStyle, "", {
         width, height, depth,
-        title: infoTitle, features: infoFeatures, infoScenario,
+        title: infoTitle, subtitle: infoSubtitle,
+        structuredFeatures: infoFeaturesArr.filter(f => f.title.trim()),
+        features: infoFeatures, infoScenario,
         lifestylePrompt, productDescription, aspectRatio: imageAspectRatio,
-        infoStyle, infoTemplate
+        infoStyle, infographicLayout,
       });
       const converted = outputFormat !== "png" ? await convertToFormat(raw, outputFormat) : raw;
       setResult(converted);
@@ -609,12 +618,14 @@ export default function App() {
         if (stopBatchRef.current) break;
         const raw  = await withRetry(() => transformImage(b64, "image/jpeg", selectedStyle, "", {
           width: item.width || width, height: item.height || height, depth: item.depth || depth,
-          title: item.infoTitle || infoTitle, features: item.infoFeatures || infoFeatures,
+          title: item.infoTitle || infoTitle, subtitle: item.infoSubtitle || infoSubtitle,
+          features: item.infoFeatures || infoFeatures,
           infoScenario: item.infoScenario || infoScenario,
           lifestylePrompt: item.lifestylePrompt || lifestylePrompt,
           productDescription: item.productDescription || productDescription,
           aspectRatio: item.aspectRatio || imageAspectRatio,
-          infoStyle: item.infoStyle || infoStyle
+          infoStyle: item.infoStyle || infoStyle,
+          infographicLayout,
         }));
         const converted = outputFormat !== "png" ? await convertToFormat(raw, outputFormat) : raw;
         setBatchItems(prev => prev.map((it, idx) => idx === i ? { ...it, status: "completed", result: converted } : it));
@@ -796,7 +807,7 @@ export default function App() {
         </motion.div>
       )}
 
-      {/* ── Infographic: título + puntos (req) → plantilla → desc ── */}
+      {/* ── Infographic: overlay v2 ── */}
       {selectedStyle === "Infographic" && (
         <motion.div key="infographic" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
           style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -807,18 +818,58 @@ export default function App() {
               className="h-9 text-xs bg-black/40 border-white/[0.06]" />
           </PanelSection>
 
-          {/* Puntos */}
-          <PanelSection label="Puntos a destacar" hint={`máx. 4 · ${infoFeatures.split("\n").filter(l => l.trim()).length}/4`}>
-            <Textarea
-              placeholder={"Material premium\nBluetooth 5.3\n30h de batería\nResistente IPX5"}
-              value={infoFeatures} onChange={e => setInfoFeatures(e.target.value)}
-              className={cn("text-xs h-24 bg-black/40", !infoFeatures.trim() ? "border-red-500/40" : "border-white/[0.06]")} />
-            <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>Un punto por línea</p>
-            <button
-              style={{ background: "transparent", border: "1px dashed rgba(255,255,255,0.12)", color: "rgba(255,255,255,0.45)", fontSize: 12, fontWeight: 600, padding: "8px 12px", borderRadius: 10, cursor: "not-allowed", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, opacity: 0.7 }}
-              disabled title="Próximamente">
-              <Sparkles size={13} strokeWidth={1.75} /> Sugerir con IA
-            </button>
+          {/* Subtítulo */}
+          <PanelSection label="Subtítulo" hint="opcional">
+            <Input placeholder="Ej: Diseño minimalista que conserva mejor tu producto"
+              value={infoSubtitle} onChange={e => setInfoSubtitle(e.target.value)}
+              className="h-9 text-xs bg-black/40 border-white/[0.06]" />
+          </PanelSection>
+
+          {/* 3 Beneficios */}
+          <PanelSection label="Beneficios" hint="mín. 1 · máx. 3">
+            {([0, 1, 2] as const).map(i => {
+              const feat = infoFeaturesArr[i];
+              const setFeat = (patch: Partial<InfographicFeature>) =>
+                setInfoFeaturesArr(prev => prev.map((f, j) => j === i ? { ...f, ...patch } : f));
+              const ICONS: { id: string; label: string }[] = [
+                { id: "circle",      label: "●" },
+                { id: "check",       label: "✓" },
+                { id: "star",        label: "★" },
+                { id: "sun_off",     label: "☀" },
+                { id: "droplet_off", label: "◇" },
+                { id: "leaf",        label: "❧" },
+              ];
+              return (
+                <div key={i} style={{ padding: "10px 12px", background: "rgba(0,0,0,0.3)", borderRadius: 10, border: `1px solid ${i === 0 && !feat.title.trim() ? "rgba(248,113,113,0.25)" : "rgba(255,255,255,0.06)"}`, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: 1 }}>
+                      Beneficio {i + 1}{i === 0 ? " *" : ""}
+                    </span>
+                    <div style={{ display: "flex", gap: 3 }}>
+                      {ICONS.map(ic => (
+                        <button key={ic.id} onClick={() => setFeat({ icon: ic.id })}
+                          title={ic.id}
+                          style={{ width: 22, height: 22, borderRadius: 5, border: `1px solid ${feat.icon === ic.id ? "rgba(196,181,253,0.5)" : "rgba(255,255,255,0.06)"}`, background: feat.icon === ic.id ? "rgba(196,181,253,0.12)" : "transparent", cursor: "pointer", fontSize: 12, display: "flex", alignItems: "center", justifyContent: "center", color: feat.icon === ic.id ? "#C4B5FD" : "rgba(255,255,255,0.4)" }}>
+                          {ic.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <Input
+                    placeholder={i === 0 ? "Título del beneficio (requerido)" : "Título del beneficio (opcional)"}
+                    value={feat.title}
+                    onChange={e => setFeat({ title: e.target.value })}
+                    className={cn("h-8 text-xs bg-black/40", i === 0 && !feat.title.trim() ? "border-red-500/40" : "border-white/[0.06]")}
+                  />
+                  <Input
+                    placeholder="Descripción breve (opcional)"
+                    value={feat.description}
+                    onChange={e => setFeat({ description: e.target.value })}
+                    className="h-8 text-xs bg-black/40 border-white/[0.06]"
+                  />
+                </div>
+              );
+            })}
           </PanelSection>
 
           {/* Estilo visual */}
@@ -832,7 +883,7 @@ export default function App() {
               ))}
             </div>
             <p style={{ fontSize: 9.5, color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, letterSpacing: 0.5 }}>
-              {infoStyle === "Pop" ? "Colores vibrantes y llamativos" : "Paleta sofisticada derivada del producto"}
+              {infoStyle === "Pop" ? "Paleta vibrante · overlay púrpura" : "Paleta cálida · overlay oscuro premium"}
             </p>
           </PanelSection>
 
@@ -844,41 +895,36 @@ export default function App() {
             </PanelSection>
           )}
 
-          {/* Plantilla de disposición */}
-          <PanelSection label="Plantilla">
+          {/* Composición / layout */}
+          <PanelSection label="Composición">
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
               {([
-                { id: "laterales" as const, label: "Laterales", preview: (
+                { id: "left_dark_panel" as InfographicLayout, label: "Panel Izq.", preview: (
                   <svg width="36" height="26" viewBox="0 0 36 26" fill="none">
-                    <rect x="1" y="1" width="34" height="24" rx="3" stroke="currentColor" strokeWidth="1.5" />
-                    <circle cx="18" cy="13" r="6" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
-                    <rect x="3" y="4" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
-                    <rect x="3" y="17" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
-                    <rect x="27" y="4" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
-                    <rect x="27" y="17" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
+                    <rect x="1" y="1" width="34" height="24" rx="3" stroke="currentColor" strokeWidth="1.5"/>
+                    <rect x="2" y="2" width="11" height="22" rx="2" fill="currentColor" opacity="0.35"/>
+                    <circle cx="23" cy="13" r="6" stroke="currentColor" strokeWidth="1.2" opacity="0.5"/>
                   </svg>
                 )},
-                { id: "tira" as const, label: "Tira", preview: (
+                { id: "top_right_text" as InfographicLayout, label: "Sup. Der.", preview: (
                   <svg width="36" height="26" viewBox="0 0 36 26" fill="none">
-                    <rect x="1" y="1" width="34" height="24" rx="3" stroke="currentColor" strokeWidth="1.5" />
-                    <circle cx="18" cy="11" r="6" stroke="currentColor" strokeWidth="1.2" opacity="0.5" />
-                    <rect x="4" y="20" width="28" height="4" rx="1" fill="currentColor" opacity="0.6" />
+                    <rect x="1" y="1" width="34" height="24" rx="3" stroke="currentColor" strokeWidth="1.5"/>
+                    <rect x="19" y="2" width="15" height="11" rx="2" fill="currentColor" opacity="0.35"/>
+                    <circle cx="12" cy="17" r="6" stroke="currentColor" strokeWidth="1.2" opacity="0.5"/>
                   </svg>
                 )},
-                { id: "grilla" as const, label: "Grilla", preview: (
+                { id: "bottom_cards" as InfographicLayout, label: "Cards Inf.", preview: (
                   <svg width="36" height="26" viewBox="0 0 36 26" fill="none">
-                    <rect x="1" y="1" width="34" height="24" rx="3" stroke="currentColor" strokeWidth="1.5" />
-                    <rect x="4" y="4" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
-                    <rect x="15" y="4" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
-                    <rect x="26" y="4" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
-                    <rect x="4" y="17" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
-                    <rect x="15" y="17" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
-                    <rect x="26" y="17" width="6" height="5" rx="1" fill="currentColor" opacity="0.6" />
+                    <rect x="1" y="1" width="34" height="24" rx="3" stroke="currentColor" strokeWidth="1.5"/>
+                    <circle cx="18" cy="11" r="6" stroke="currentColor" strokeWidth="1.2" opacity="0.5"/>
+                    <rect x="2" y="19" width="9" height="5" rx="1" fill="currentColor" opacity="0.5"/>
+                    <rect x="13" y="19" width="9" height="5" rx="1" fill="currentColor" opacity="0.5"/>
+                    <rect x="24" y="19" width="9" height="5" rx="1" fill="currentColor" opacity="0.5"/>
                   </svg>
                 )},
-              ] as { id: "laterales" | "tira" | "grilla"; label: string; preview: React.ReactNode }[]).map(t => (
-                <button key={t.id} onClick={() => setInfoTemplate(t.id)}
-                  style={{ borderRadius: 10, padding: "10px 0 8px", background: infoTemplate === t.id ? "rgba(196,181,253,0.08)" : "transparent", border: `1px solid ${infoTemplate === t.id ? "rgba(196,181,253,0.25)" : "rgba(255,255,255,0.06)"}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, cursor: "pointer", color: infoTemplate === t.id ? "#C4B5FD" : "rgba(255,255,255,0.4)" }}>
+              ]).map(t => (
+                <button key={t.id} onClick={() => setInfographicLayout(t.id)}
+                  style={{ borderRadius: 10, padding: "10px 0 8px", background: infographicLayout === t.id ? "rgba(196,181,253,0.08)" : "transparent", border: `1px solid ${infographicLayout === t.id ? "rgba(196,181,253,0.25)" : "rgba(255,255,255,0.06)"}`, display: "flex", flexDirection: "column", alignItems: "center", gap: 6, cursor: "pointer", color: infographicLayout === t.id ? "#C4B5FD" : "rgba(255,255,255,0.4)" }}>
                   {t.preview}
                   <span style={{ fontSize: 9.5, fontWeight: 600 }}>{t.label}</span>
                 </button>
