@@ -208,47 +208,64 @@ async function generateInfographic(
     "16:9": "HORIZONTAL/LANDSCAPE FORMAT (16:9) — wide horizontal banner. Design for a wide screen with horizontal composition, product on one side and text on the other",
   };
 
-  const autoTitle = `Write a punchy Spanish sales hook (6-9 words, ALL CAPS) that highlights the main benefit or emotion — NOT the product name. Tone: ${infoStyle === "Elegante" ? "premium and aspirational" : "energetic and action-oriented"}.`;
-  const headlineText = titleProvided ? `"${titleProvided}" (copy exactly, ALL CAPS)` : autoTitle;
+  const autoTitle = infoStyle === "Elegante"
+    ? `Write a premium Spanish sales headline (4-6 words, ALL CAPS, bold) that highlights a key benefit or quality. Style: aspirational, sophisticated. Example tone: "DURABILIDAD SIN HUELLAS", "ESTILO SOFT NORDIC DURADERO", "ESTÉTICA & LIMPIEZA PREMIUM".`
+    : `Write an energetic Spanish sales headline (4-6 words, ALL CAPS, bold) that highlights a key benefit. Example tone: "FRESCURA QUE DURA TODO EL DÍA", "SABOR PERFECTO SIEMPRE LISTO".`;
+  const headlineText = titleProvided ? `"${titleProvided}"` : autoTitle;
   const featuresText = featureLines.length > 0
     ? featureLines.map(f => `• ${f}`).join("\n")
     : "(none provided)";
 
+  const sceneContext = infoScenario
+    ? `Scene context: "${infoScenario}"`
+    : infoStyle === "Elegante"
+      ? "Choose a warm, natural lifestyle context appropriate for this product (kitchen counter, wooden table near window, etc.) with 1-2 complementary props that suggest use."
+      : "Choose a clean, well-lit lifestyle context for this product with 1-2 props that suggest its use.";
+
   let prompt = "";
 
   if (infoStyle === "Elegante") {
-    prompt = `${descPrefix}Create a ${ar} premium product lifestyle infographic for e-commerce.
+    prompt = `${descPrefix}Create a ${ar} professional lifestyle product photo for e-commerce, in the style of high-end Argentine marketplace listings.
 
-VISUAL STRUCTURE — build the image in exactly this order from top to bottom:
-1. HEADER STRIP (solid dark or brand-colored band, ~18% height): contains only the headline in large white bold uppercase text. No product visible here.
-2. PRODUCT PHOTO (clean light background, ~55% height): the exact product from the reference image, centered, well-lit. No text of any kind overlaps the product.
-3. FEATURES ROW (bottom ~27%): dark or contrasting strip with the features listed horizontally or in 2 columns. Each feature: small icon + short uppercase label.
+PHOTO COMPOSITION:
+- Shoot the product in a realistic lifestyle setting: place it on a surface (wooden table, kitchen counter, shelf) with 1-2 relevant props nearby (cup, plant, ingredient, utensil — whatever fits the product).
+- ${sceneContext}
+- The background must have a large clear area (bright wall, window light, open space) in the upper-right or upper portion of the frame. This natural negative space is where the text will go.
+- Lighting: warm, soft, natural. Shallow depth of field with gentle bokeh in the background.
+- Product must be the visual hero, clearly visible, fully unobscured.
 
-HEADLINE: ${headlineText}
+PRODUCT FIDELITY: render the exact product from the attached photo — same shape, colors, labels, markings, materials. Do not change it in any way.
 
-FEATURES (show all, no omissions):
+TEXT OVERLAY (placed ONLY in the natural negative/clear areas of the background, never on the product):
+- HEADLINE: ${headlineText} — large, bold, uppercase, dark color that matches or complements the product's palette. Font: clean modern sans-serif or elegant serif. Size: dominant, impossible to miss.
+- FEATURES (placed as simple bullet points below or beside the headline):
 ${featuresText}
+  Style: bullet points (•), same dark color as headline, clean sans-serif, smaller than headline but clearly readable.
 
-PRODUCT: use the exact product from the attached photo — same shape, colors, labels, materials. Do not alter it.
-SCENE: ${infoScenario ? `"${infoScenario}"` : "clean studio or subtle premium background, soft warm lighting."}
-STYLE: sophisticated, minimal, premium brand catalog. Muted color palette derived from the product.
-TEXT: all features exactly as written, preserve Spanish accents, no invented text.`;
+IMPORTANT: text must sit naturally on the clear/bright areas of the photo background. It should look like it was added as a clean typographic overlay on the photo — not like a graphic design card or banner.
+
+TEXT ACCURACY: copy all features exactly as written. Preserve Spanish accents (á, é, í, ó, ú, ñ). Do not invent or paraphrase any text.`;
   } else {
-    prompt = `${descPrefix}Create a ${ar} bold e-commerce product infographic card.
+    prompt = `${descPrefix}Create a ${ar} professional lifestyle product photo for e-commerce, in the style of high-converting Argentine marketplace listings.
 
-VISUAL STRUCTURE — build the image in exactly this order from top to bottom:
-1. HEADER BAND (vivid solid color, ~18% height): headline text only in large white bold uppercase. No product here.
-2. PRODUCT ZONE (clean gradient or solid background, ~55% height): the exact product from the reference image centered and fully visible. Zero text overlaps the product — this zone is text-free.
-3. FEATURES STRIP (bottom ~27%): contrasting background with all features. Layout: 2 columns or horizontal row. Each feature: emoji or icon + short uppercase label.
+PHOTO COMPOSITION:
+- Shoot the product in a clean, well-lit lifestyle setting with 1-2 relevant props that suggest its use.
+- ${sceneContext}
+- Ensure there is generous clear/open space (bright wall, plain background area) in the upper portion of the frame where text can be placed. The product should occupy the center or lower-center of the frame.
+- Lighting: bright, clean, professional. The image should feel fresh and appealing.
+- Product must be the visual hero, clearly visible, fully unobscured.
 
-HEADLINE: ${headlineText}
+PRODUCT FIDELITY: render the exact product from the attached photo — same shape, colors, labels, markings, materials. Do not change it in any way.
 
-FEATURES (show every single one, no omissions):
+TEXT OVERLAY (placed ONLY in the natural open/clear areas of the background, never on or touching the product):
+- HEADLINE: ${headlineText} — very large, bold, uppercase. Use a dark color that contrasts well with the background and matches the product's color palette. Font: bold modern sans-serif.
+- FEATURES (placed as bullet points below or beside the headline):
 ${featuresText}
+  Style: bullet points (•), bold sans-serif, same color family as headline, clearly readable.
 
-PRODUCT: use the exact product from the attached photo — same shape, colors, labels, materials. Do not alter it.
-STYLE: vibrant, bold, high-energy e-commerce graphic. Color palette from the product's dominant colors.
-TEXT: all features exactly as written, preserve Spanish accents, no invented text.`;
+IMPORTANT: text must float naturally on the open areas of the photo. It should look like clean typography overlaid on a lifestyle photo — NOT a designed card, NOT a banner, NOT a graphic with sections or boxes.
+
+TEXT ACCURACY: copy all features exactly as written. Preserve Spanish accents (á, é, í, ó, ú, ñ). Do not invent or paraphrase any text.`;
   }
 
 
