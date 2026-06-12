@@ -26,11 +26,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const imageFile = new File([imageBuffer], "image.png", { type: mimeType || "image/png" });
 
     const formData = new FormData();
-    formData.append("model",  "gpt-image-1");
-    formData.append("prompt", prompt);
-    formData.append("size",   size || "1024x1024");
-    formData.append("n",      "1");
-    formData.append("image",  imageFile, "image.png");
+    formData.append("model",   "gpt-image-1");
+    formData.append("prompt",  prompt);
+    formData.append("size",    size || "1024x1024");
+    formData.append("quality", "high");
+    formData.append("n",       "1");
+    formData.append("image",   imageFile, "image.png");
 
     const openaiRes = await fetch("https://api.openai.com/v1/images/edits", {
       method: "POST",

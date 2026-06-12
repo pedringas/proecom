@@ -225,47 +225,37 @@ async function generateInfographic(
   let prompt = "";
 
   if (infoStyle === "Elegante") {
-    prompt = `${descPrefix}Create a ${ar} professional lifestyle product photo for e-commerce, in the style of high-end Argentine marketplace listings.
+    prompt = `${descPrefix}Professional commercial product photography, ${ar} format, shot on 85mm lens at f/2.0 aperture. Photorealistic, magazine-quality image for a premium e-commerce listing.
 
-PHOTO COMPOSITION:
-- Shoot the product in a realistic lifestyle setting: place it on a surface (wooden table, kitchen counter, shelf) with 1-2 relevant props nearby (cup, plant, ingredient, utensil — whatever fits the product).
-- ${sceneContext}
-- The background must have a large clear area (bright wall, window light, open space) in the upper-right or upper portion of the frame. This natural negative space is where the text will go.
-- Lighting: warm, soft, natural. Shallow depth of field with gentle bokeh in the background.
-- Product must be the visual hero, clearly visible, fully unobscured.
+SCENE: ${sceneContext} The product rests on a natural surface with 1-2 contextual props (complementary to the product type). Warm natural side-lighting, soft bokeh background. The upper portion of the frame has a clear, light area — wall, window glow or open background — with plenty of negative space for text.
 
-PRODUCT FIDELITY: render the exact product from the attached photo — same shape, colors, labels, markings, materials. Do not change it in any way.
+PRODUCT: Render the exact product from the reference image — identical shape, colors, labels, markings and materials. Do not alter it in any way.
 
-TEXT OVERLAY (placed ONLY in the natural negative/clear areas of the background, never on the product):
-- HEADLINE: ${headlineText} — large, bold, uppercase, dark color that matches or complements the product's palette. Font: clean modern sans-serif or elegant serif. Size: dominant, impossible to miss.
-- FEATURES (placed as simple bullet points below or beside the headline):
+TYPOGRAPHY OVERLAY (rendered directly on the photo, on the clear negative space in the upper area, never on the product):
+Headline: ${headlineText} — bold uppercase, large, dark color matching the product's palette, clean serif or sans-serif.
+Below the headline, as bullet points:
 ${featuresText}
-  Style: bullet points (•), same dark color as headline, clean sans-serif, smaller than headline but clearly readable.
+Bullet style: • symbol, same dark color, clean sans-serif, clearly legible.
 
-IMPORTANT: text must sit naturally on the clear/bright areas of the photo background. It should look like it was added as a clean typographic overlay on the photo — not like a graphic design card or banner.
+The text must look like professional typography cleanly overlaid on a real photograph. No graphic design elements, no boxes, no banners — just text on the natural background of the photo.
 
-TEXT ACCURACY: copy all features exactly as written. Preserve Spanish accents (á, é, í, ó, ú, ñ). Do not invent or paraphrase any text.`;
+Photorealistic lighting, real depth of field, hyperrealistic product rendering. Shot for a high-end Argentine marketplace listing.`;
   } else {
-    prompt = `${descPrefix}Create a ${ar} professional lifestyle product photo for e-commerce, in the style of high-converting Argentine marketplace listings.
+    prompt = `${descPrefix}Professional commercial product photography, ${ar} format, shot on 50mm lens at f/2.8 aperture. Crisp, vibrant, photorealistic image for an e-commerce listing.
 
-PHOTO COMPOSITION:
-- Shoot the product in a clean, well-lit lifestyle setting with 1-2 relevant props that suggest its use.
-- ${sceneContext}
-- Ensure there is generous clear/open space (bright wall, plain background area) in the upper portion of the frame where text can be placed. The product should occupy the center or lower-center of the frame.
-- Lighting: bright, clean, professional. The image should feel fresh and appealing.
-- Product must be the visual hero, clearly visible, fully unobscured.
+SCENE: ${sceneContext} The product is the clear hero, placed center-frame or slightly lower, with 1-2 props that suggest its use. Bright, clean natural lighting. The upper portion of the frame — wall, clean background or open space — provides generous negative space where text will be placed.
 
-PRODUCT FIDELITY: render the exact product from the attached photo — same shape, colors, labels, markings, materials. Do not change it in any way.
+PRODUCT: Render the exact product from the reference image — identical shape, colors, labels, markings and materials. Do not alter it in any way.
 
-TEXT OVERLAY (placed ONLY in the natural open/clear areas of the background, never on or touching the product):
-- HEADLINE: ${headlineText} — very large, bold, uppercase. Use a dark color that contrasts well with the background and matches the product's color palette. Font: bold modern sans-serif.
-- FEATURES (placed as bullet points below or beside the headline):
+TYPOGRAPHY OVERLAY (rendered directly on the photo, on the open background area in the upper portion, never touching the product):
+Headline: ${headlineText} — very large, bold uppercase, strong dark color that contrasts with the background and matches the product palette, bold modern sans-serif.
+Below or beside the headline, as bullet points:
 ${featuresText}
-  Style: bullet points (•), bold sans-serif, same color family as headline, clearly readable.
+Bullet style: • symbol, bold sans-serif, same color family as headline, clearly readable.
 
-IMPORTANT: text must float naturally on the open areas of the photo. It should look like clean typography overlaid on a lifestyle photo — NOT a designed card, NOT a banner, NOT a graphic with sections or boxes.
+The text must look like bold professional typography cleanly overlaid on a real photograph. No graphic design elements, no boxes, no banners, no sections — just text floating on the natural background of the photo.
 
-TEXT ACCURACY: copy all features exactly as written. Preserve Spanish accents (á, é, í, ó, ú, ñ). Do not invent or paraphrase any text.`;
+Hyperrealistic product rendering, natural depth of field, commercial photography quality.`;
   }
 
 
