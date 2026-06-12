@@ -187,7 +187,7 @@ async function generateInfographic(
   const titleProvided = (extraData?.title || "").trim();
   const title = titleProvided;
   const features = (extraData?.features as string) || "";
-  const infoStyle = extraData?.infoStyle || "Pop";
+  const infoStyle: "Pop" | "Elegante" = (extraData?.infoStyle || "").toLowerCase() === "elegante" ? "Elegante" : "Pop";
   const ar = (extraData?.aspectRatio as string) || "1:1";
   const infoScenario = (extraData?.infoScenario as string) || "";
   const productDesc = (extraData?.productDescription as string) || "";

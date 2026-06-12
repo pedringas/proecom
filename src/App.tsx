@@ -372,7 +372,7 @@ export default function App() {
         ...item,
         infoTitle:          get("titulo")                               || item.infoTitle,
         infoFeatures:       get("caracteristicas").replace(/\|/g, "\n") || item.infoFeatures,
-        infoStyle:          (get("estilo") as "Pop" | "Elegante")       || item.infoStyle,
+        infoStyle:          (get("estilo").toLowerCase() === "elegante" ? "Elegante" : get("estilo").toLowerCase() === "pop" ? "Pop" : undefined) || item.infoStyle,
         infoScenario:       get("escenario")                            || item.infoScenario,
         width:              get("ancho")                                || item.width,
         height:             get("alto")                                 || item.height,
@@ -432,7 +432,7 @@ export default function App() {
     };
     if (selectedStyle === "Infographic") return {
       headers: ["sku", "descripcion_producto", "titulo", "caracteristicas", "estilo", "escenario"],
-      example: ["producto-001", "Descripción del producto", "Mi Producto Premium", "Duradero|Elegante|Económico", "Pop", ""],
+      example: ["producto-001", "Descripción del producto", "Mi Producto Premium", "Duradero|Económico|Resistente", "Pop", ""],
     };
     return {
       headers: ["sku", "descripcion_producto", "entorno"],
