@@ -170,8 +170,23 @@ const PanelSection = ({ label, hint, children }: { label: string; hint?: string;
   </div>
 );
 
+// ─── Mobile breakpoint ────────────────────────────────────────────────────────
+const MOBILE_BREAKPOINT = 768;
+const useIsMobile = () => {
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < MOBILE_BREAKPOINT);
+  useEffect(() => {
+    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const onChange = () => setIsMobile(mql.matches);
+    mql.addEventListener("change", onChange);
+    onChange();
+    return () => mql.removeEventListener("change", onChange);
+  }, []);
+  return isMobile;
+};
+
 // ─── App ──────────────────────────────────────────────────────────────────────
 export default function App() {
+  const isMobile = useIsMobile();
   const [image, setImage]                     = useState<string | null>(null);
   const [originalFileName, setOriginalFileName] = useState("");
   const [mimeType, setMimeType]               = useState("");
@@ -912,70 +927,97 @@ export default function App() {
         <input type="file" ref={csvInputRef}         onChange={handleCsvImport}  className="hidden" accept=".csv,.xlsx,.xls,text/csv" />
 
         {/* ── Header ───────────────────────────────────────────────────────── */}
-        {!isEmbed && (
-          <header
-            className="shrink-0 flex items-center justify-between px-[18px]"
-            style={{ height: 56, borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.85)", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50 }}
-          >
-            <div className="flex items-center gap-[18px]">
-              {/* LogoMark + Wordmark */}
-              <div className="flex items-center gap-[10px]">
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: "linear-gradient(135deg,#C4B5FD,#8B5CF6)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 16px rgba(196,181,253,0.25),inset 0 0 0 1px rgba(255,255,255,0.2)", flexShrink: 0 }}>
-                  <div style={{ width: 10, height: 10, background: "#050505", borderRadius: 3, transform: "rotate(45deg)" }} />
-                </div>
-                <span style={{ fontFamily: '"Playfair Display",serif', fontWeight: 700, fontSize: 18, letterSpacing: -0.5, whiteSpace: "nowrap" }}>
-                  ProEcom <span style={{ color: "#D4AF37", fontStyle: "italic" }}>AI</span>
-                </span>
+        {!isEmbed && (() => {
+          const logoWordmark = (
+            <div className="flex items-center gap-[10px]" style={{ flexShrink: 0 }}>
+              <div style={{ width: 24, height: 24, borderRadius: 6, background: "linear-gradient(135deg,#C4B5FD,#8B5CF6)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 0 16px rgba(196,181,253,0.25),inset 0 0 0 1px rgba(255,255,255,0.2)", flexShrink: 0 }}>
+                <div style={{ width: 10, height: 10, background: "#050505", borderRadius: 3, transform: "rotate(45deg)" }} />
               </div>
-              <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.06)", flexShrink: 0 }} />
-              {/* Nav tabs */}
-              <nav className="flex gap-1">
-                {(["Crear", "Por lote"] as const).map(label => {
-                  const tab: ActiveTab = label === "Crear" ? "crear" : "lote";
-                  const isActive = activeTab === tab;
-                  return (
-                    <button key={label}
-                      onClick={() => { setActiveTab(tab); setIsBatchMode(tab === "lote"); }}
-                      style={{ padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, border: "none", cursor: "pointer", background: isActive ? "rgba(255,255,255,0.07)" : "transparent", color: isActive ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", transition: "background 0.15s,color 0.15s" }}>
-                      {label}
-                    </button>
-                  );
-                })}
-                <button
-                  onClick={() => setIsHistorialOpen(true)}
-                  style={{ padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, border: "none", cursor: "pointer", background: "transparent", color: "rgba(255,255,255,0.55)", transition: "background 0.15s,color 0.15s", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  Historial
-                  {history.length > 0 && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.32)" }}>{history.length}</span>}
-                </button>
-              </nav>
-            </div>
-            {/* Right chips */}
-            <div className="flex items-center gap-[10px]">
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(212,175,55,0.08)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.25)", fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500 }}>
-                <Sparkles size={11} strokeWidth={1.75} /> Gemini 2.5
+              <span style={{ fontFamily: '"Playfair Display",serif', fontWeight: 700, fontSize: 18, letterSpacing: -0.5, whiteSpace: "nowrap" }}>
+                ProEcom <span style={{ color: "#D4AF37", fontStyle: "italic" }}>AI</span>
               </span>
-              {isGoogleAuth ? (
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: isOffline ? "rgba(248,113,113,0.08)" : "rgba(74,222,128,0.08)", color: isOffline ? "#F87171" : "#4ADE80", border: `1px solid ${isOffline ? "rgba(248,113,113,0.25)" : "rgba(74,222,128,0.25)"}`, fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500 }}>
-                  <span className={isOffline ? "pulse-dot" : ""} style={{ width: 6, height: 6, borderRadius: 999, background: "currentColor", display: "inline-block" }} />
-                  Drive{isOffline ? " · sin conexión" : ""}
-                </span>
-              ) : (
-                <button onClick={handleConnectDrive} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500, cursor: "pointer" }}>
-                  <Cloud size={11} strokeWidth={1.75} /> Conectar Drive
-                </button>
-              )}
-              <div style={{ width: 32, height: 32, borderRadius: 999, background: "linear-gradient(135deg,#C4B5FD,#8B5CF6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#0A0A0E" }}>P</div>
             </div>
-          </header>
-        )}
+          );
+          const navTabs = (
+            <nav className="flex gap-1" style={{ overflowX: "auto" }}>
+              {(["Crear", "Por lote"] as const).map(label => {
+                const tab: ActiveTab = label === "Crear" ? "crear" : "lote";
+                const isActive = activeTab === tab;
+                return (
+                  <button key={label}
+                    onClick={() => { setActiveTab(tab); setIsBatchMode(tab === "lote"); }}
+                    style={{ padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, border: "none", cursor: "pointer", background: isActive ? "rgba(255,255,255,0.07)" : "transparent", color: isActive ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", transition: "background 0.15s,color 0.15s", whiteSpace: "nowrap", flexShrink: 0 }}>
+                    {label}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setIsHistorialOpen(true)}
+                style={{ padding: "6px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, border: "none", cursor: "pointer", background: "transparent", color: "rgba(255,255,255,0.55)", transition: "background 0.15s,color 0.15s", display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap", flexShrink: 0 }}>
+                Historial
+                {history.length > 0 && <span style={{ fontSize: 11, color: "rgba(255,255,255,0.32)" }}>{history.length}</span>}
+              </button>
+            </nav>
+          );
+          const geminiChip = (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(212,175,55,0.08)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.25)", fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0 }}>
+              <Sparkles size={11} strokeWidth={1.75} /> Gemini 2.5
+            </span>
+          );
+          const driveChip = isGoogleAuth ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: isOffline ? "rgba(248,113,113,0.08)" : "rgba(74,222,128,0.08)", color: isOffline ? "#F87171" : "#4ADE80", border: `1px solid ${isOffline ? "rgba(248,113,113,0.25)" : "rgba(74,222,128,0.25)"}`, fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0 }}>
+              <span className={isOffline ? "pulse-dot" : ""} style={{ width: 6, height: 6, borderRadius: 999, background: "currentColor", display: "inline-block" }} />
+              Drive{isOffline ? " · sin conexión" : ""}
+            </span>
+          ) : (
+            <button onClick={handleConnectDrive} style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.04)", color: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.08)", fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+              <Cloud size={11} strokeWidth={1.75} /> Conectar Drive
+            </button>
+          );
+          const avatar = (
+            <div style={{ width: 32, height: 32, borderRadius: 999, background: "linear-gradient(135deg,#C4B5FD,#8B5CF6)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: "#0A0A0E", flexShrink: 0 }}>P</div>
+          );
+
+          return (
+            <header
+              style={{ display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "stretch" : "center", justifyContent: "space-between", gap: isMobile ? 10 : 0, padding: isMobile ? "10px 14px" : "0 18px", height: isMobile ? "auto" : 56, borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.85)", backdropFilter: "blur(12px)", position: "sticky", top: 0, zIndex: 50, flexShrink: 0 }}
+            >
+              {isMobile ? (
+                <>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+                    {logoWordmark}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+                      {driveChip}
+                      {avatar}
+                    </div>
+                  </div>
+                  {navTabs}
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-[18px]">
+                    {logoWordmark}
+                    <div style={{ width: 1, height: 22, background: "rgba(255,255,255,0.06)", flexShrink: 0 }} />
+                    {navTabs}
+                  </div>
+                  <div className="flex items-center gap-[10px]">
+                    {geminiChip}
+                    {driveChip}
+                    {avatar}
+                  </div>
+                </>
+              )}
+            </header>
+          );
+        })()}
 
         {/* ── Offline banner ───────────────────────────────────────────────── */}
         <AnimatePresence>
           {isOffline && (
-            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 40, opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-              style={{ background: "rgba(248,113,113,0.12)", borderBottom: "1px solid rgba(248,113,113,0.25)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 18px", flexShrink: 0, overflow: "hidden" }}>
+            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }}
+              style={{ background: "rgba(248,113,113,0.12)", borderBottom: "1px solid rgba(248,113,113,0.25)", display: "flex", flexDirection: isMobile ? "column" : "row", alignItems: isMobile ? "flex-start" : "center", justifyContent: "space-between", gap: isMobile ? 4 : 0, padding: isMobile ? "8px 14px" : "0 18px", minHeight: isMobile ? undefined : 40, flexShrink: 0, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "#F87171" }}>
-                <span className="pulse-dot" style={{ width: 8, height: 8, borderRadius: 999, background: "#F87171", display: "inline-block" }} />
+                <span className="pulse-dot" style={{ width: 8, height: 8, borderRadius: 999, background: "#F87171", display: "inline-block", flexShrink: 0 }} />
                 Sin conexión — reintentando… Tu trabajo está guardado localmente.
               </div>
               <span style={{ fontSize: 11, color: "rgba(248,113,113,0.6)" }}>Reintentando en 5s</span>
@@ -984,37 +1026,53 @@ export default function App() {
         </AnimatePresence>
 
         {/* ── Body ─────────────────────────────────────────────────────────── */}
-        <div className="flex flex-1 min-h-0" style={{ height: isEmbed ? "100vh" : "calc(100vh - 56px)" }}>
+        <div style={{ display: "flex", flex: 1, flexDirection: isMobile ? "column" : "row", minHeight: 0, height: isMobile ? "auto" : (isEmbed ? "100vh" : "calc(100vh - 56px)"), overflowY: isMobile ? "visible" : "hidden" }}>
 
           {/* Style Rail — only in crear tab */}
           {activeTab === "crear" && (
-            <nav style={{ width: 76, flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.4)", padding: "16px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-              {STYLES.map(s => {
-                const active = selectedStyle === s.id;
-                const SIcon = s.icon;
-                return (
-                  <button key={s.id} onClick={() => setSelectedStyle(s.id)}
-                    style={{ width: 56, padding: "10px 0", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: active ? "rgba(255,255,255,0.07)" : "transparent", color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.15s,color 0.15s" }}>
-                    {active && <div style={{ position: "absolute", left: -10, top: 12, bottom: 12, width: 2.5, borderRadius: 2, background: "#C4B5FD" }} />}
-                    <SIcon size={18} strokeWidth={1.75} />
-                    <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: 0.2 }}>{s.short}</span>
-                  </button>
-                );
-              })}
-              <div style={{ flex: 1 }} />
-              <button style={{ width: 40, height: 40, borderRadius: 12, border: "none", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Settings size={18} strokeWidth={1.75} />
-              </button>
-            </nav>
+            isMobile ? (
+              <nav style={{ width: "100%", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.4)", padding: "10px 12px", display: "flex", flexDirection: "row", alignItems: "center", gap: 6, overflowX: "auto" }}>
+                {STYLES.map(s => {
+                  const active = selectedStyle === s.id;
+                  const SIcon = s.icon;
+                  return (
+                    <button key={s.id} onClick={() => setSelectedStyle(s.id)}
+                      style={{ flexShrink: 0, padding: "8px 12px", borderRadius: 10, display: "flex", flexDirection: "row", alignItems: "center", gap: 6, background: active ? "rgba(255,255,255,0.07)" : "transparent", color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", border: "none", cursor: "pointer" }}>
+                      <SIcon size={16} strokeWidth={1.75} style={{ color: active ? "#C4B5FD" : undefined }} />
+                      <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>{s.short}</span>
+                    </button>
+                  );
+                })}
+              </nav>
+            ) : (
+              <nav style={{ width: 76, flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.4)", padding: "16px 10px", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+                {STYLES.map(s => {
+                  const active = selectedStyle === s.id;
+                  const SIcon = s.icon;
+                  return (
+                    <button key={s.id} onClick={() => setSelectedStyle(s.id)}
+                      style={{ width: 56, padding: "10px 0", borderRadius: 12, display: "flex", flexDirection: "column", alignItems: "center", gap: 5, background: active ? "rgba(255,255,255,0.07)" : "transparent", color: active ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.55)", border: "none", cursor: "pointer", position: "relative", transition: "background 0.15s,color 0.15s" }}>
+                      {active && <div style={{ position: "absolute", left: -10, top: 12, bottom: 12, width: 2.5, borderRadius: 2, background: "#C4B5FD" }} />}
+                      <SIcon size={18} strokeWidth={1.75} />
+                      <span style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: 0.2 }}>{s.short}</span>
+                    </button>
+                  );
+                })}
+                <div style={{ flex: 1 }} />
+                <button style={{ width: 40, height: 40, borderRadius: 12, border: "none", background: "transparent", color: "rgba(255,255,255,0.55)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Settings size={18} strokeWidth={1.75} />
+                </button>
+              </nav>
+            )
           )}
 
           {/* ── CREAR TAB ─────────────────────────────────────────────────── */}
           {activeTab === "crear" && (
             <>
               {/* Center stage */}
-              <main style={{ flex: 1, display: "flex", flexDirection: "column", padding: 20, gap: 12, minWidth: 0, overflow: "hidden" }}>
+              <main style={{ flex: isMobile ? "0 0 auto" : 1, display: "flex", flexDirection: "column", padding: isMobile ? 14 : 20, gap: 12, minWidth: 0, overflow: isMobile ? "visible" : "hidden" }}>
                 {/* Stage header */}
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0, flexWrap: isMobile ? "wrap" : "nowrap", gap: 8 }}>
                   <div>
                     <div style={{ fontSize: 11, color: "#C4B5FD", fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase" }}>
                       Estilo · {STYLES.find(s => s.id === selectedStyle)?.label}
@@ -1039,7 +1097,9 @@ export default function App() {
 
                 {/* Stage canvas */}
                 <div
-                  style={{ flex: 1, borderRadius: 20, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", position: "relative", background: "#0B0B0D", minHeight: 0 }}
+                  style={isMobile
+                    ? { minHeight: 380, height: 380, borderRadius: 20, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", position: "relative", background: "#0B0B0D", flexShrink: 0 }
+                    : { flex: 1, borderRadius: 20, overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)", position: "relative", background: "#0B0B0D", minHeight: 0 }}
                   onDragOver={e => e.preventDefault()} onDrop={onDrop}
                 >
                   <AnimatePresence mode="wait">
@@ -1169,8 +1229,8 @@ export default function App() {
 
                 {/* Stage footer */}
                 {result && !isProcessing && (
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, color: "rgba(255,255,255,0.32)", flexShrink: 0 }}>
-                    <span style={{ fontFamily: "ui-monospace,Menlo,monospace", fontSize: 11 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11.5, color: "rgba(255,255,255,0.32)", flexShrink: 0, flexWrap: "wrap", gap: 6 }}>
+                    <span style={{ fontFamily: "ui-monospace,Menlo,monospace", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: isMobile ? 160 : undefined }}>
                       {originalFileName || "imagen.jpg"} · {outputFormat.toUpperCase()}
                     </span>
                     <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -1188,8 +1248,12 @@ export default function App() {
               </main>
 
               {/* Right panel */}
-              <aside style={{ width: 340, flexShrink: 0, borderLeft: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.5)", display: "flex", flexDirection: "column" }}>
-                <div style={{ flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }} className="custom-scrollbar">
+              <aside style={isMobile
+                ? { width: "100%", flexShrink: 0, borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.5)", display: "flex", flexDirection: "column" }
+                : { width: 340, flexShrink: 0, borderLeft: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.5)", display: "flex", flexDirection: "column" }}>
+                <div style={isMobile
+                  ? { padding: 16, display: "flex", flexDirection: "column", gap: 18 }
+                  : { flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }} className="custom-scrollbar">
 
                   {/* Tu foto */}
                   {image && (
@@ -1242,7 +1306,9 @@ export default function App() {
                 </div>
 
                 {/* Fixed footer */}
-                <div style={{ padding: 16, borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(5,5,5,0.7)", display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={isMobile
+                  ? { padding: 14, borderTop: "1px solid rgba(255,255,255,0.08)", background: "rgba(5,5,5,0.7)", display: "flex", flexDirection: "column", gap: 8 }
+                  : { padding: 16, borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(5,5,5,0.7)", display: "flex", flexDirection: "column", gap: 8 }}>
                   {result && (
                     <div style={{ display: "flex", gap: 8 }}>
                       <button onClick={downloadResult}
@@ -1268,12 +1334,12 @@ export default function App() {
 
           {/* ── LOTE TAB ──────────────────────────────────────────────────── */}
           {activeTab === "lote" && (
-            <div style={{ flex: 1, display: "flex", minHeight: 0, minWidth: 0 }}>
+            <div style={{ flex: 1, display: "flex", flexDirection: isMobile ? "column" : "row", minHeight: 0, minWidth: 0 }}>
 
             {/* ── Lote center ── */}
-            <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 20, gap: 14, minWidth: 0, overflow: "hidden" }}>
+            <div style={{ flex: isMobile ? "0 0 auto" : 1, display: "flex", flexDirection: "column", padding: isMobile ? 14 : 20, gap: 14, minWidth: 0, overflow: isMobile ? "visible" : "hidden" }}>
               {/* Header */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexShrink: 0 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexShrink: 0, flexWrap: isMobile ? "wrap" : "nowrap", gap: 8 }}>
                 <div>
                   <div style={{ fontSize: 11, color: "#C4B5FD", fontWeight: 600, letterSpacing: 1.4, textTransform: "uppercase" }}>
                     {isProcessing ? `Procesando lote · ${batchItems.filter(i => i.status === "completed" || i.status === "error").length} de ${batchItems.length}` : `Por lote${batchItems.length > 0 ? ` · ${batchItems.length} productos` : ""}`}
@@ -1292,7 +1358,9 @@ export default function App() {
 
               {/* ── EMPTY STATE: 3 import cards ── */}
               {batchItems.length === 0 && (
-                <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 14, minHeight: 0 }}
+                <div style={isMobile
+                  ? { display: "flex", flexDirection: "column", gap: 14 }
+                  : { flex: 1, display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr", gap: 14, minHeight: 0 }}
                   onDragOver={e => { e.preventDefault(); setBatchDropActive(true); }}
                   onDragLeave={() => setBatchDropActive(false)}
                   onDrop={handleBatchDrop}>
@@ -1310,7 +1378,7 @@ export default function App() {
                       style={{ height: 46, padding: "0 20px", borderRadius: 12, border: "none", background: "#C4B5FD", color: "#0A0A0E", fontSize: 13.5, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 8, boxShadow: "0 10px 28px -10px rgba(196,181,253,0.6),inset 0 1px 0 rgba(255,255,255,0.3)" }}>
                       <Upload size={16} strokeWidth={1.75} /> Seleccionar archivos
                     </button>
-                    <div style={{ position: "absolute", bottom: 20, fontSize: 11, color: "rgba(255,255,255,0.32)" }}>JPG · PNG · WebP · hasta 10 MB c/u</div>
+                    <div style={isMobile ? { fontSize: 11, color: "rgba(255,255,255,0.32)" } : { position: "absolute", bottom: 20, fontSize: 11, color: "rgba(255,255,255,0.32)" }}>JPG · PNG · WebP · hasta 10 MB c/u</div>
                   </div>
 
                   {/* CSV card */}
@@ -1397,7 +1465,7 @@ export default function App() {
 
                   {/* Processing table */}
                   <div style={{ flex: 1, borderRadius: 16, overflow: "hidden", background: "rgba(11,11,13,0.6)", border: "1px solid rgba(255,255,255,0.06)", display: "flex", flexDirection: "column", minHeight: 0 }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "44px 1fr 120px 1fr 80px", gap: 12, padding: "9px 14px", fontSize: 10.5, fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: 1.2, textTransform: "uppercase", background: "rgba(0,0,0,0.25)", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+                    <div style={{ display: isMobile ? "none" : "grid", gridTemplateColumns: "44px 1fr 120px 1fr 80px", gap: 12, padding: "9px 14px", fontSize: 10.5, fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: 1.2, textTransform: "uppercase", background: "rgba(0,0,0,0.25)", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
                       <span />
                       <span>Archivo</span>
                       <span>Estilo</span>
@@ -1408,7 +1476,7 @@ export default function App() {
                       {batchItems.map(item => {
                         const SIcon = STYLES.find(s => s.id === selectedStyle)?.icon || Box;
                         return (
-                          <div key={item.id} style={{ display: "grid", gridTemplateColumns: "44px 1fr 120px 1fr 80px", gap: 12, padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", alignItems: "center", background: item.status === "processing" ? "rgba(196,181,253,0.04)" : item.status === "error" ? "rgba(248,113,113,0.04)" : item.status === "completed" ? "rgba(74,222,128,0.025)" : "transparent" }}>
+                          <div key={item.id} style={{ display: "flex", flexDirection: isMobile ? "column" : "row", ...(isMobile ? {} : { display: "grid", gridTemplateColumns: "44px 1fr 120px 1fr 80px" }), gap: isMobile ? 8 : 12, padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", alignItems: isMobile ? "flex-start" : "center", background: item.status === "processing" ? "rgba(196,181,253,0.04)" : item.status === "error" ? "rgba(248,113,113,0.04)" : item.status === "completed" ? "rgba(74,222,128,0.025)" : "transparent" }}>
                             <div style={{ position: "relative", width: 40, height: 40, borderRadius: 8, overflow: "hidden", flexShrink: 0, border: "1px solid rgba(255,255,255,0.08)" }}>
                               <img src={showOriginalItems.has(item.id) ? item.preview : (item.status === "completed" && item.result ? item.result : item.preview)} className="w-full h-full object-cover" />
                               {item.status === "completed" && <div style={{ position: "absolute", inset: 0, background: "rgba(74,222,128,0.18)", display: "flex", alignItems: "center", justifyContent: "center", color: "#4ADE80" }}><Check size={16} /></div>}
@@ -1465,8 +1533,8 @@ export default function App() {
                 <div style={{ flex: 1, display: "flex", flexDirection: "column", borderRadius: 16, overflow: "hidden", background: "rgba(11,11,13,0.6)", border: "1px solid rgba(255,255,255,0.06)", minHeight: 0 }}>
 
                   {/* Toolbar */}
-                  <div style={{ padding: "9px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ padding: "9px 14px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8, background: "rgba(0,0,0,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)", flexShrink: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                       <span style={{ fontSize: 12, color: "rgba(255,255,255,0.55)" }}>{batchItems.length} producto{batchItems.length !== 1 ? "s" : ""}</span>
                       {batchItems.some(i => i.status === "completed") && (
                         <>
@@ -1486,7 +1554,7 @@ export default function App() {
                   </div>
 
                   {/* Column headers */}
-                  <div style={{ display: "grid", gridTemplateColumns: "44px 1.3fr 1.8fr 110px 64px", gap: 10, padding: "8px 14px", fontSize: 10.5, fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: 1.2, textTransform: "uppercase", background: "rgba(0,0,0,0.15)", flexShrink: 0 }}>
+                  <div style={{ display: isMobile ? "none" : "grid", gridTemplateColumns: "44px 1.3fr 1.8fr 110px 64px", gap: 10, padding: "8px 14px", fontSize: 10.5, fontWeight: 600, color: "rgba(255,255,255,0.32)", letterSpacing: 1.2, textTransform: "uppercase", background: "rgba(0,0,0,0.15)", flexShrink: 0 }}>
                     <span />
                     <span>Archivo</span>
                     <span>{selectedStyle === "Technical" ? "Dimensiones" : selectedStyle === "Infographic" ? "Título y puntos" : "Descripción"}</span>
@@ -1547,7 +1615,7 @@ export default function App() {
                           onDragOver={e => { e.preventDefault(); setDragOverId(item.id); }}
                           onDrop={() => { if (dragIndex.current !== null) reorderBatch(dragIndex.current, itemIdx); dragIndex.current = null; setDragOverId(null); }}
                           onDragEnd={() => { dragIndex.current = null; setDragOverId(null); }}
-                          style={{ display: "grid", gridTemplateColumns: "44px 1.3fr 1.8fr 110px 64px", gap: 10, padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", alignItems: "start", background: dragOverId === item.id ? "rgba(196,181,253,0.04)" : item.status === "completed" ? "rgba(74,222,128,0.025)" : item.status === "error" ? "rgba(248,113,113,0.04)" : "transparent" }}>
+                          style={{ display: "flex", flexDirection: isMobile ? "column" : "row", ...(isMobile ? {} : { display: "grid", gridTemplateColumns: "44px 1.3fr 1.8fr 110px 64px" }), gap: isMobile ? 8 : 10, padding: "10px 14px", borderTop: "1px solid rgba(255,255,255,0.04)", alignItems: "start", background: dragOverId === item.id ? "rgba(196,181,253,0.04)" : item.status === "completed" ? "rgba(74,222,128,0.025)" : item.status === "error" ? "rgba(248,113,113,0.04)" : "transparent" }}>
                           <div style={{ width: 40, height: 40, borderRadius: 8, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", cursor: "grab", flexShrink: 0, marginTop: 2 }}>
                             <img src={item.status === "completed" && item.result ? item.result : item.preview} className="w-full h-full object-cover" />
                           </div>
@@ -1600,8 +1668,12 @@ export default function App() {
             </div>
 
             {/* ── Lote right panel (340px) ── */}
-            <aside style={{ width: 340, flexShrink: 0, borderLeft: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.5)", display: "flex", flexDirection: "column" }}>
-              <div style={{ flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }} className="custom-scrollbar">
+            <aside style={isMobile
+              ? { width: "100%", flexShrink: 0, borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.5)", display: "flex", flexDirection: "column" }
+              : { width: 340, flexShrink: 0, borderLeft: "1px solid rgba(255,255,255,0.06)", background: "rgba(11,11,13,0.5)", display: "flex", flexDirection: "column" }}>
+              <div style={isMobile
+                ? { padding: 16, display: "flex", flexDirection: "column", gap: 18 }
+                : { flex: 1, padding: 20, overflowY: "auto", display: "flex", flexDirection: "column", gap: 20 }} className="custom-scrollbar">
 
                 {/* Estilo por defecto */}
                 <div>
@@ -1703,7 +1775,9 @@ export default function App() {
               </div>
 
               {/* Footer CTA */}
-              <div style={{ padding: 16, borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(5,5,5,0.7)", display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={isMobile
+                ? { padding: 14, borderTop: "1px solid rgba(255,255,255,0.08)", background: "rgba(5,5,5,0.7)", display: "flex", flexDirection: "column", gap: 8 }
+                : { padding: 16, borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(5,5,5,0.7)", display: "flex", flexDirection: "column", gap: 8 }}>
                 {batchItems.some(i => i.status === "completed") && !isProcessing && (
                   <button onClick={downloadAllBatch}
                     style={{ height: 42, borderRadius: 12, border: "1px solid rgba(196,181,253,0.2)", background: "transparent", color: "#C4B5FD", fontSize: 13, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -1739,11 +1813,13 @@ export default function App() {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
                 transition={{ duration: 0.2 }}
-                style={{ flex: 1, display: "flex", flexDirection: "column", maxWidth: 1200, margin: "40px auto", background: "rgba(11,11,13,0.95)", borderRadius: 22, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 50px 120px -30px rgba(0,0,0,0.8)", overflow: "hidden" }}
+                style={isMobile
+                  ? { flex: 1, display: "flex", flexDirection: "column", margin: 0, background: "rgba(11,11,13,0.98)", borderRadius: 0, border: "none", overflow: "hidden" }
+                  : { flex: 1, display: "flex", flexDirection: "column", maxWidth: 1200, margin: "40px auto", background: "rgba(11,11,13,0.95)", borderRadius: 22, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 50px 120px -30px rgba(0,0,0,0.8)", overflow: "hidden" }}
                 onClick={e => e.stopPropagation()}
               >
                 {/* Modal header */}
-                <div style={{ padding: "18px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: 16, flexShrink: 0, background: "rgba(0,0,0,0.3)" }}>
+                <div style={{ padding: isMobile ? "14px 16px" : "18px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", gap: isMobile ? 10 : 16, flexShrink: 0, flexWrap: isMobile ? "wrap" : "nowrap", background: "rgba(0,0,0,0.3)" }}>
                   <History size={18} strokeWidth={1.75} style={{ color: "#C4B5FD" }} />
                   <div style={{ flex: 1 }}>
                     <span style={{ fontSize: 14, fontWeight: 700 }}>Historial</span>
@@ -1752,16 +1828,16 @@ export default function App() {
                     </span>
                   </div>
                   {/* Search */}
-                  <div style={{ position: "relative" }}>
+                  <div style={{ position: "relative", flex: isMobile ? "1 1 auto" : undefined, minWidth: isMobile ? 120 : undefined }}>
                     <input
                       value={historialSearch}
                       onChange={e => setHistorialSearch(e.target.value)}
                       placeholder="Buscar por nombre…"
-                      style={{ height: 34, padding: "0 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, fontSize: 12, color: "rgba(255,255,255,0.92)", outline: "none", width: 200 }}
+                      style={{ height: 34, padding: "0 12px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, fontSize: 12, color: "rgba(255,255,255,0.92)", outline: "none", width: isMobile ? "100%" : 200 }}
                     />
                   </div>
                   {/* Filter chips */}
-                  <div style={{ display: "flex", gap: 4 }}>
+                  <div style={{ display: "flex", gap: 4, overflowX: isMobile ? "auto" : "visible" }}>
                     {["Todo", ...STYLES.map(s => s.short)].slice(0, 4).map((f, i) => (
                       <span key={f} style={{ padding: "4px 10px", borderRadius: 8, fontSize: 11.5, fontWeight: 500, background: i === 0 ? "rgba(255,255,255,0.07)" : "transparent", color: i === 0 ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.4)", border: `1px solid ${i === 0 ? "rgba(255,255,255,0.12)" : "transparent"}`, cursor: "pointer" }}>
                         {f}
@@ -1781,7 +1857,7 @@ export default function App() {
                 </div>
 
                 {/* Grid */}
-                <div style={{ flex: 1, overflowY: "auto", padding: 24 }} className="custom-scrollbar">
+                <div style={{ flex: 1, overflowY: "auto", padding: isMobile ? 16 : 24 }} className="custom-scrollbar">
                   {history.length === 0 ? (
                     <div style={{ height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, opacity: 0.25 }}>
                       <History size={64} strokeWidth={1} />
@@ -1856,11 +1932,11 @@ export default function App() {
         <AnimatePresence>
           {isRateLimitOpen && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[110] flex items-center justify-center p-6"
+              className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6"
               style={{ background: "rgba(5,5,5,0.85)", backdropFilter: "blur(16px)" }}
               onClick={() => setIsRateLimitOpen(false)}>
               <motion.div initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 16 }}
-                style={{ width: "100%", maxWidth: 420, background: "rgba(11,11,13,0.98)", borderRadius: 22, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 50px 120px -30px rgba(0,0,0,0.8)", padding: "32px 28px", display: "flex", flexDirection: "column", gap: 20 }}
+                style={{ width: "100%", maxWidth: 420, background: "rgba(11,11,13,0.98)", borderRadius: 22, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 50px 120px -30px rgba(0,0,0,0.8)", padding: isMobile ? "24px 20px" : "32px 28px", display: "flex", flexDirection: "column", gap: 20 }}
                 onClick={e => e.stopPropagation()}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
                   <div style={{ width: 44, height: 44, borderRadius: 14, background: "rgba(196,181,253,0.1)", border: "1px solid rgba(196,181,253,0.25)", display: "flex", alignItems: "center", justifyContent: "center", color: "#C4B5FD", flexShrink: 0 }}>
@@ -1903,11 +1979,11 @@ export default function App() {
         <AnimatePresence>
           {isDriveOnboardingOpen && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[110] flex items-center justify-center p-6"
+              className="fixed inset-0 z-[110] flex items-center justify-center p-4 sm:p-6"
               style={{ background: "rgba(5,5,5,0.85)", backdropFilter: "blur(16px)" }}
               onClick={() => setIsDriveOnboardingOpen(false)}>
               <motion.div initial={{ scale: 0.92, opacity: 0, y: 16 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.92, opacity: 0, y: 16 }}
-                style={{ width: "100%", maxWidth: 420, background: "rgba(11,11,13,0.98)", borderRadius: 22, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 50px 120px -30px rgba(0,0,0,0.8)", padding: "32px 28px", display: "flex", flexDirection: "column", gap: 22 }}
+                style={{ width: "100%", maxWidth: 420, background: "rgba(11,11,13,0.98)", borderRadius: 22, border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 50px 120px -30px rgba(0,0,0,0.8)", padding: isMobile ? "24px 20px" : "32px 28px", display: "flex", flexDirection: "column", gap: 22 }}
                 onClick={e => e.stopPropagation()}>
                 <div style={{ textAlign: "center" }}>
                   <div style={{ width: 52, height: 52, borderRadius: 16, background: "rgba(74,222,128,0.1)", border: "1px solid rgba(74,222,128,0.25)", display: "flex", alignItems: "center", justifyContent: "center", color: "#4ADE80", margin: "0 auto 16px" }}>
@@ -1950,7 +2026,7 @@ export default function App() {
         <AnimatePresence>
           {isPreviewOpen && result && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] flex items-center justify-center p-10"
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-10"
               style={{ background: "rgba(0,0,0,0.95)", backdropFilter: "blur(20px)" }}
               onClick={() => setIsPreviewOpen(false)}>
               <button style={{ position: "absolute", top: 24, right: 24, width: 48, height: 48, borderRadius: 999, background: "rgba(255,255,255,0.1)", border: "none", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -1967,25 +2043,25 @@ export default function App() {
         <AnimatePresence>
           {selectedHistoryItem && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="fixed inset-0 z-[100] flex items-center justify-center p-10"
+              className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-10"
               style={{ background: "rgba(0,0,0,0.95)", backdropFilter: "blur(20px)" }}
               onClick={() => setSelectedHistoryItem(null)}>
               {history.length > 1 && (
                 <>
-                  <button style={{ position: "absolute", left: 16, top: "50%", transform: "translateY(-50%)", width: 64, height: 64, borderRadius: 999, background: "transparent", border: "none", color: "rgba(255,255,255,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  <button style={{ position: "absolute", left: isMobile ? 4 : 16, top: "50%", transform: "translateY(-50%)", width: isMobile ? 36 : 64, height: isMobile ? 36 : 64, borderRadius: 999, background: isMobile ? "rgba(0,0,0,0.5)" : "transparent", border: "none", color: "rgba(255,255,255,0.7)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20 }}
                     onClick={e => { e.stopPropagation(); const idx = history.findIndex(i => i.id === selectedHistoryItem.id); setSelectedHistoryItem(history[(idx + 1) % history.length]); }}>
-                    <ChevronLeft size={40} />
+                    <ChevronLeft size={isMobile ? 22 : 40} />
                   </button>
-                  <button style={{ position: "absolute", right: 16, top: "50%", transform: "translateY(-50%)", width: 64, height: 64, borderRadius: 999, background: "transparent", border: "none", color: "rgba(255,255,255,0.25)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  <button style={{ position: "absolute", right: isMobile ? 4 : 16, top: "50%", transform: "translateY(-50%)", width: isMobile ? 36 : 64, height: isMobile ? 36 : 64, borderRadius: 999, background: isMobile ? "rgba(0,0,0,0.5)" : "transparent", border: "none", color: "rgba(255,255,255,0.7)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 20 }}
                     onClick={e => { e.stopPropagation(); const idx = history.findIndex(i => i.id === selectedHistoryItem.id); setSelectedHistoryItem(history[(idx - 1 + history.length) % history.length]); }}>
-                    <ChevronRight size={40} />
+                    <ChevronRight size={isMobile ? 22 : 40} />
                   </button>
                 </>
               )}
               <motion.div initial={{ scale: 0.9, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.9, opacity: 0, y: 20 }}
-                style={{ position: "relative", maxWidth: "80vw", width: "100%", background: "rgba(11,11,13,0.9)", borderRadius: 22, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 50px 120px -30px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column" }}
+                style={{ position: "relative", maxWidth: isMobile ? "100%" : "80vw", width: "100%", background: "rgba(11,11,13,0.9)", borderRadius: isMobile ? 16 : 22, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", boxShadow: "0 50px 120px -30px rgba(0,0,0,0.8)", display: "flex", flexDirection: "column" }}
                 onClick={e => e.stopPropagation()}>
-                <div style={{ position: "absolute", top: 24, right: 24, display: "flex", gap: 10, zIndex: 10 }}>
+                <div style={{ position: "absolute", top: isMobile ? 12 : 24, right: isMobile ? 12 : 24, display: "flex", gap: 10, zIndex: 10 }}>
                   <button style={{ width: 40, height: 40, borderRadius: 999, background: "rgba(255,255,255,0.1)", border: "none", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                     onClick={() => downloadUrl(selectedHistoryItem.result, getFormattedFileName(selectedHistoryItem.fileName || "result", selectedHistoryItem.style))}>
                     <Download size={18} />
@@ -1993,10 +2069,10 @@ export default function App() {
                   <button style={{ width: 40, height: 40, borderRadius: 999, background: "rgba(255,255,255,0.1)", border: "none", color: "white", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
                     onClick={() => setSelectedHistoryItem(null)}><X size={18} /></button>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "48px 48px 32px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: isMobile ? "40px 16px 16px" : "48px 48px 32px" }}>
                   <img src={selectedHistoryItem.result} style={{ maxWidth: "100%", maxHeight: "65vh", objectFit: "contain", borderRadius: 12, boxShadow: "0 20px 60px rgba(0,0,0,0.5)" }} referrerPolicy="no-referrer" />
                 </div>
-                <div style={{ padding: "20px 32px 28px", background: "rgba(0,0,0,0.4)", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+                <div style={{ padding: isMobile ? "14px 16px 18px" : "20px 32px 28px", background: "rgba(0,0,0,0.4)", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <div style={{ width: 52, height: 52, borderRadius: 10, overflow: "hidden", border: "1px solid rgba(255,255,255,0.08)", flexShrink: 0 }}>
                       <img src={selectedHistoryItem.original} className="w-full h-full object-cover" />
