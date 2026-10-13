@@ -1,3 +1,5 @@
+import { drawDimensions } from "./dimensionsOverlay";
+
 export interface TransformationResult {
   imageUrl: string;
 }
@@ -9,8 +11,8 @@ const OPENAI_SIZES: Record<string, string> = {
   "9:16": "1024x1536",
 };
 
-// high solo donde hay texto que tiene que salir exacto; medium cuesta ~4x menos
-const HIGH_QUALITY_STYLES = ["Technical", "Infographic"];
+// high solo donde el modelo dibuja texto (Medidas lo dibuja la app); medium cuesta ~4x menos
+const HIGH_QUALITY_STYLES = ["Infographic"];
 
 async function generateOpenAIImage(
   style: string,
@@ -113,36 +115,27 @@ KEY REQUIREMENTS:
 
     // ─── 4. MEDIDAS ──────────────────────────────────────────────────────────
     case "Technical": {
-      const w = extraData?.width || "0";
-      const h = extraData?.height || "0";
-      const d = extraData?.depth || "0";
+      // La IA solo genera la foto; cotas y leyenda las dibuja drawDimensions
+      // con los números exactos del formulario (el modelo no copia texto de forma confiable).
       const ar = extraData?.aspectRatio || "1:1";
+      const technicalPrompt = `${extraData?.productDescription ? `Product description provided by user: "${extraData.productDescription}"\n\n` : ""}You are a professional e-commerce product photographer.
 
-      const technicalPrompt = `${extraData?.productDescription ? `Product description provided by user: "${extraData.productDescription}"\n\n` : ""}You are a professional product photographer and graphic designer creating a technical dimensions sheet for an e-commerce listing.
+Place the exact product from the attached image on a pure white background (#FFFFFF). Keep 100% visual fidelity: same shape, angle, colors, brand, labels and materials. Do not alter the product in any way.
 
-STEP 1 — PRODUCT PHOTO:
-Place the original product from the attached image on a pure white background (#FFFFFF). Keep 100% visual fidelity: same shape, angle, colors, brand, labels. Do not alter the product in any way.
+COMPOSITION:
+- Product centered, shown complete (never cropped), occupying about 75% of the frame.
+- Soft, even studio lighting. Only a subtle contact shadow directly under the product.
+- Pure white everywhere else: no gradients, no floor line, no props.
+- Show ONLY the product: remove any hands, people, packaging or objects from the reference photo that are not part of the product itself.
 
-STEP 2 — DIMENSION LINES:
-Add clean, minimal dimension annotation lines directly on the image, similar to architectural or industrial design drawings:
-- A horizontal double-headed arrow (↔) below the product, labeled exactly: "${w} cm"
-- A vertical double-headed arrow (↕) to the right of the product, labeled exactly: "${h} cm"
-- A diagonal double-headed arrow at the depth axis, labeled exactly: "${d} cm"
-Use thin lines (1-2px), color: #555555. Place small perpendicular end caps on each arrow.
+STRICTLY FORBIDDEN: any text, numbers, measurement lines, arrows, labels, logos added to the scene, watermarks or graphic elements. The output must be a clean product photo only.`;
 
-STEP 3 — LEGEND BAR:
-At the very bottom of the image, add a clean light gray bar (#F5F5F5) with this exact text centered in dark gray (#333333), using a clean sans-serif font (Inter or similar), font size readable at thumbnail:
-
-Ancho: ${w} cm  |  Alto: ${h} cm  |  Profundo: ${d} cm
-
-CRITICAL TEXT RULES:
-- Render ONLY these exact words: "Ancho", "Alto", "Profundo", "cm" and the numbers provided.
-- Copy the numbers exactly as given: width="${w}", height="${h}", depth="${d}".
-- Do NOT change, round, invent or alter any number or word.
-- Do NOT use abbreviations. Do NOT add extra words.
-- Double-check every character before rendering.`;
-
-      return await generateOpenAIImage("Technical", technicalPrompt, ar, base64Image, mimeType);
+      const photo = await generateOpenAIImage("Technical", technicalPrompt, ar, base64Image, mimeType);
+      return await drawDimensions(photo, {
+        width: extraData?.width,
+        height: extraData?.height,
+        depth: extraData?.depth,
+      });
     }
 
     // ─── 5. INFOGRAFÍA ───────────────────────────────────────────────────────
