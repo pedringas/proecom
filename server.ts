@@ -249,6 +249,7 @@ app.post("/api/generate-image-openai", async (req, res) => {
     formData.append("model",  "gpt-image-1");
     formData.append("prompt", prompt);
     formData.append("size",   size || "1024x1024");
+    formData.append("quality", "high");
     formData.append("n",      "1");
     formData.append("image",  imageFile, "image.png");
 

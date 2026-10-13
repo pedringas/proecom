@@ -961,7 +961,7 @@ export default function App() {
           );
           const geminiChip = (
             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(212,175,55,0.08)", color: "#D4AF37", border: "1px solid rgba(212,175,55,0.25)", fontSize: 11, padding: "3px 9px", borderRadius: 999, fontWeight: 500, whiteSpace: "nowrap", flexShrink: 0 }}>
-              <Sparkles size={11} strokeWidth={1.75} /> Gemini 2.5
+              <Sparkles size={11} strokeWidth={1.75} /> GPT Image
             </span>
           );
           const driveChip = isGoogleAuth ? (
@@ -2102,7 +2102,7 @@ export default function App() {
 
         {!isEmbed && (
           <footer style={{ borderTop: "1px solid rgba(255,255,255,0.06)", padding: "20px 0", textAlign: "center", fontSize: 10, color: "rgba(255,255,255,0.2)", textTransform: "uppercase", letterSpacing: 2 }}>
-            © 2026 ProEcom AI · Gemini 2.5 Flash · Google Drive Ready
+            © 2026 ProEcom AI · OpenAI GPT Image · Google Drive Ready
           </footer>
         )}
       </div>

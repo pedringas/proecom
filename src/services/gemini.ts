@@ -2,6 +2,42 @@ export interface TransformationResult {
   imageUrl: string;
 }
 
+// Tamaños soportados por gpt-image-1
+const OPENAI_SIZES: Record<string, string> = {
+  "1:1":  "1024x1024",
+  "16:9": "1536x1024",
+  "9:16": "1024x1536",
+};
+
+async function generateOpenAIImage(
+  style: string,
+  prompt: string,
+  aspectRatio: string,
+  base64Image: string,
+  mimeType: string,
+): Promise<string> {
+  const res = await fetch("/api/generate-image-openai", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      style,
+      prompt,
+      size: OPENAI_SIZES[aspectRatio] || "1024x1024",
+      image: base64Image,
+      mimeType,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`OpenAI API error ${res.status}: ${err}`);
+  }
+
+  const data = await res.json() as { b64_json?: string };
+  if (!data.b64_json) throw new Error("No image returned by API.");
+  return `data:image/png;base64,${data.b64_json}`;
+}
+
 export async function transformImage(
   base64Image: string,
   mimeType: string,
@@ -75,11 +111,6 @@ KEY REQUIREMENTS:
       const h = extraData?.height || "0";
       const d = extraData?.depth || "0";
       const ar = extraData?.aspectRatio || "1:1";
-      const sizeMap: Record<string, string> = {
-        "1:1":  "1024x1024",
-        "16:9": "1792x1024",
-        "9:16": "1024x1792",
-      };
 
       const technicalPrompt = `${extraData?.productDescription ? `Product description provided by user: "${extraData.productDescription}"\n\n` : ""}You are a professional product photographer and graphic designer creating a technical dimensions sheet for an e-commerce listing.
 
@@ -105,26 +136,7 @@ CRITICAL TEXT RULES:
 - Do NOT use abbreviations. Do NOT add extra words.
 - Double-check every character before rendering.`;
 
-      const techRes = await fetch("/api/generate-image-openai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          style: "Technical",
-          prompt: technicalPrompt,
-          size: sizeMap[ar] || "1024x1024",
-          image: base64Image,
-          mimeType,
-        }),
-      });
-
-      if (!techRes.ok) {
-        const err = await techRes.text();
-        throw new Error(`Technical API error ${techRes.status}: ${err}`);
-      }
-
-      const techData = await techRes.json() as { b64_json?: string };
-      if (!techData.b64_json) throw new Error("No image returned by API.");
-      return `data:image/png;base64,${techData.b64_json}`;
+      return await generateOpenAIImage("Technical", technicalPrompt, ar, base64Image, mimeType);
     }
 
     // ─── 5. INFOGRAFÍA ───────────────────────────────────────────────────────
@@ -145,33 +157,10 @@ CRITICAL TEXT RULES:
   };
   prompt += `\n\nMANDATORY FINAL REQUIREMENT — OUTPUT ASPECT RATIO: You MUST generate the image in ${arDesc[ar] || ar} aspect ratio. This is non-negotiable. Every element — product, background, badges, title — must be composed and cropped to fit exactly within this ratio. Do NOT output a square image if a different ratio is requested.`;
 
-  const response = await fetch("/api/gemini", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      type: "image",
-      parts: [
-        { inlineData: { data: base64Image, mimeType } },
-        { text: prompt },
-      ],
-      config: {
-        responseModalities: ["IMAGE"],
-        aspectRatio: extraData?.aspectRatio || "1:1",
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Gemini API error ${response.status}: ${err}`);
-  }
-
-  const data = await response.json() as { imageData?: string };
-  if (!data.imageData) throw new Error("No image was returned by the API.");
-  return `data:image/png;base64,${data.imageData}`;
+  return await generateOpenAIImage(style, prompt, ar, base64Image, mimeType);
 }
 
-// ─── INFOGRAFÍA VIA GPT-IMAGE-1 ──────────────────────────────────────────────
+// ─── INFOGRAFÍA ──────────────────────────────────────────────
 async function generateInfographic(
   base64Image: string,
   mimeType: string,
@@ -259,32 +248,7 @@ Hyperrealistic product rendering, natural depth of field, commercial photography
   }
 
 
-  const sizeMap: Record<string, string> = {
-    "1:1":  "1024x1024",
-    "16:9": "1792x1024",
-    "9:16": "1024x1792",
-  };
-
-  const response = await fetch("/api/generate-image-openai", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      prompt,
-      size: sizeMap[ar] || "1024x1024",
-      image: base64Image,
-      mimeType,
-    }),
-  });
-
-  if (!response.ok) {
-    const err = await response.text();
-    throw new Error(`Infographic API error ${response.status}: ${err}`);
-  }
-
-  const data = await response.json() as { b64_json?: string };
-  const b64 = data.b64_json;
-  if (!b64) throw new Error("No image returned by infographic API.");
-  return `data:image/png;base64,${b64}`;
+  return await generateOpenAIImage("Infographic", prompt, ar, base64Image, mimeType);
 }
 
 // ─── ANALYZE PRODUCT (para Video 360°) ───────────────────────────────────────
