@@ -260,8 +260,11 @@ app.post("/api/generate-image-openai", async (req, res) => {
     });
 
     if (!openaiRes.ok) {
-      const err = await openaiRes.text();
-      return res.status(openaiRes.status).json({ error: err });
+      const raw = await openaiRes.text();
+      let message = raw;
+      try { message = JSON.parse(raw).error?.message || raw; } catch {}
+      console.error(`OpenAI ${openaiRes.status} [style=${style || "unknown"}]:`, message);
+      return res.status(openaiRes.status).json({ error: message });
     }
 
     const data = await openaiRes.json() as { data?: { b64_json?: string }[] };

@@ -588,7 +588,8 @@ export default function App() {
         setIsRateLimitOpen(true);
       } else {
         const code = `GEN_ERR · ${Date.now().toString(36).toUpperCase()}`;
-        setGenerationError({ message: "El modelo tardó demasiado o no pudo procesar la imagen.", code });
+        console.error("Generation error:", msg);
+        setGenerationError({ message: msg ? `No se pudo generar la imagen. ${msg.slice(0, 300)}` : "El modelo tardó demasiado o no pudo procesar la imagen.", code });
       }
     } finally {
       setIsProcessing(false);

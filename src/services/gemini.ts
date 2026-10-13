@@ -33,8 +33,10 @@ async function generateOpenAIImage(
   });
 
   if (!res.ok) {
-    const err = await res.text();
-    throw new Error(`OpenAI API error ${res.status}: ${err}`);
+    const raw = await res.text();
+    let message = raw;
+    try { message = JSON.parse(raw).error || raw; } catch {}
+    throw new Error(`OpenAI ${res.status}: ${message}`);
   }
 
   const data = await res.json() as { b64_json?: string };
