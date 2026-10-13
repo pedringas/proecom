@@ -10,9 +10,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(500).json({ error: "OPENAI_API_KEY not configured on server" });
   }
 
-  const { prompt, size, image, mimeType, style } = req.body as {
+  const { prompt, size, quality, image, mimeType, style } = req.body as {
     prompt?: string;
     size?: string;
+    quality?: string;
     image?: string;
     mimeType?: string;
     style?: string;
@@ -29,7 +30,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     formData.append("model",   "gpt-image-1");
     formData.append("prompt",  prompt);
     formData.append("size",    size || "1024x1024");
-    formData.append("quality", "high");
+    formData.append("quality", quality === "medium" ? "medium" : "high");
     formData.append("n",       "1");
     formData.append("image",   imageFile, "image.png");
 

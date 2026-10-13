@@ -9,6 +9,9 @@ const OPENAI_SIZES: Record<string, string> = {
   "9:16": "1024x1536",
 };
 
+// high solo donde hay texto que tiene que salir exacto; medium cuesta ~4x menos
+const HIGH_QUALITY_STYLES = ["Technical", "Infographic"];
+
 async function generateOpenAIImage(
   style: string,
   prompt: string,
@@ -23,6 +26,7 @@ async function generateOpenAIImage(
       style,
       prompt,
       size: OPENAI_SIZES[aspectRatio] || "1024x1024",
+      quality: HIGH_QUALITY_STYLES.includes(style) ? "high" : "medium",
       image: base64Image,
       mimeType,
     }),

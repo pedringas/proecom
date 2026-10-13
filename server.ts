@@ -237,7 +237,7 @@ app.post("/api/generate-image-openai", async (req, res) => {
     return res.status(500).json({ error: "OPENAI_API_KEY not configured on server" });
   }
 
-  const { prompt, size, image, mimeType, style } = req.body;
+  const { prompt, size, quality, image, mimeType, style } = req.body;
   if (!prompt) return res.status(400).json({ error: "prompt is required" });
   if (!image)  return res.status(400).json({ error: "image is required" });
 
@@ -249,7 +249,7 @@ app.post("/api/generate-image-openai", async (req, res) => {
     formData.append("model",  "gpt-image-1");
     formData.append("prompt", prompt);
     formData.append("size",   size || "1024x1024");
-    formData.append("quality", "high");
+    formData.append("quality", quality === "medium" ? "medium" : "high");
     formData.append("n",      "1");
     formData.append("image",  imageFile, "image.png");
 
