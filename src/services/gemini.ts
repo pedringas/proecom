@@ -4,7 +4,7 @@ export interface TransformationResult {
   imageUrl: string;
 }
 
-// Tamaños soportados por gpt-image-1
+// Tamaños soportados por gpt-image-2.5-sunburst
 const OPENAI_SIZES: Record<string, string> = {
   "1:1":  "1024x1024",
   "16:9": "1536x1024",

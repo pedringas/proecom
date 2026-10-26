@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const imageFile = new File([imageBuffer], "image.png", { type: mimeType || "image/png" });
 
     const formData = new FormData();
-    formData.append("model",   "gpt-image-1");
+    formData.append("model",   "gpt-image-2.5-sunburst");
     formData.append("prompt",  prompt);
     formData.append("size",    size || "1024x1024");
     formData.append("quality", quality === "medium" ? "medium" : "high");
